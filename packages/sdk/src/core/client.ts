@@ -57,12 +57,7 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
   async function initLocalBackend(backend: InferenceBackend): Promise<void> {
     try {
       const stats = await getDeviceContext();
-      // MLCBackend has a grade-aware initialize
-      if ('initialize' in backend && backend.initialize.length > 0) {
-        await (backend as MLCBackend).initialize(stats.grade);
-      } else {
-        await backend.initialize();
-      }
+      await (backend as MLCBackend).initialize(stats.grade);
     } catch (err) {
       logger.warn('Local backend initialization failed:', err);
       localBackend = null;
