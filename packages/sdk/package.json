@@ -56,6 +56,7 @@
     "@mlc-ai/web-llm": "^0.2.80",
     "@webgpu/types": "^0.1.69",
     "@webllm-io/tsconfig": "workspace:*",
+    "happy-dom": "^20.4.0",
     "tsup": "^8",
     "typescript": "^5.5",
     "vitest": "^2"
