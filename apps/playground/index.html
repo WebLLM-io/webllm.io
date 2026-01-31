@@ -23,7 +23,54 @@
         <option value="local">Local Only</option>
         <option value="cloud">Cloud Only</option>
       </select>
-      <input type="text" id="cloud-url" placeholder="Cloud API URL (optional)" />
+      <button id="settings-toggle" type="button">Settings</button>
+      <button id="clear-btn" type="button">Clear</button>
+    </div>
+
+    <div id="settings-panel" class="hidden">
+      <!-- Local Settings -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Local</h3>
+        <div class="settings-grid">
+          <label for="setting-local-model">Model</label>
+          <input type="text" id="setting-local-model" placeholder="auto (device-based)" />
+
+          <label for="setting-local-worker">WebWorker</label>
+          <select id="setting-local-worker">
+            <option value="true" selected>Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+
+          <label for="setting-local-cache">Cache (OPFS)</label>
+          <select id="setting-local-cache">
+            <option value="true" selected>Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cloud Settings -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Cloud</h3>
+        <div class="settings-grid">
+          <label for="setting-base-url">Base URL</label>
+          <input type="text" id="setting-base-url" placeholder="https://api.openai.com/v1" />
+
+          <label for="setting-api-key">API Key</label>
+          <input type="password" id="setting-api-key" placeholder="sk-..." />
+
+          <label for="setting-model">Model</label>
+          <input type="text" id="setting-model" placeholder="gpt-4o-mini" />
+
+          <label for="setting-timeout">Timeout (ms)</label>
+          <input type="number" id="setting-timeout" placeholder="30000" />
+
+          <label for="setting-retries">Retries</label>
+          <input type="number" id="setting-retries" placeholder="1" />
+        </div>
+      </div>
+
+      <button id="apply-settings-btn" type="button">Apply &amp; Reinitialize</button>
     </div>
 
     <div id="progress-container" class="hidden">

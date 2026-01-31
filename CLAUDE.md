@@ -63,6 +63,27 @@ pnpm --filter @webllm-io/playground dev   # Start playground dev server
 
 Requires COOP/COEP headers (configured in vite.config.ts) for SharedArrayBuffer.
 
+#### Settings Panel
+
+The playground includes a collapsible Settings panel with **Local** and **Cloud** sections:
+
+**Local settings:**
+- **Model** — Fixed model name (empty = auto device-based selection)
+- **WebWorker** — Run inference in WebWorker (default: Enabled)
+- **Cache (OPFS)** — Enable OPFS model caching (default: Enabled)
+
+**Cloud settings:**
+- **Base URL** — Cloud API endpoint (e.g., `https://api.openai.com/v1`)
+- **API Key** — Authentication key (stored in localStorage, password-masked)
+- **Model** — Model identifier (e.g., `gpt-4o-mini`)
+- **Timeout / Retries** — Request timeout in ms and retry count
+
+Settings are persisted in localStorage under the key `webllm-playground-config` and restored on page load. Click "Apply & Reinitialize" to apply changes.
+
+#### Model Tag
+
+Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-Instruct-q4f16_1-MLC` or `gpt-4o-mini`) as an italic tag below the message content, extracted from the first streaming chunk's `model` field.
+
 ## Conventions
 
 - Build tool: tsup (ESM/CJS dual output + DTS)
