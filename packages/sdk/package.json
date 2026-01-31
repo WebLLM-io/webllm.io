@@ -1,0 +1,43 @@
+{
+  "name": "@webllm-io/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    },
+    "./providers/mlc": {
+      "import": { "types": "./dist/providers/mlc.d.ts", "default": "./dist/providers/mlc.js" }
+    },
+    "./providers/fetch": {
+      "import": { "types": "./dist/providers/fetch.d.ts", "default": "./dist/providers/fetch.js" }
+    },
+    "./worker": {
+      "import": { "types": "./dist/worker-entry.d.ts", "default": "./dist/worker-entry.js" }
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@mlc-ai/web-llm": ">=0.2.70"
+  },
+  "peerDependenciesMeta": {
+    "@mlc-ai/web-llm": { "optional": true }
+  },
+  "devDependencies": {
+    "@mlc-ai/web-llm": "^0.2.80",
+    "tsup": "^8",
+    "typescript": "^5.5",
+    "vitest": "^2",
+    "@webllm-io/tsconfig": "workspace:*"
+  }
+}
