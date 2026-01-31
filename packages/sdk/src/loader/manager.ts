@@ -1,9 +1,9 @@
 import type { ModelLoadState } from './types.js';
 import { EventEmitter } from '../utils/event-emitter.js';
 
-interface LoaderEvents {
+type LoaderEvents = {
   stateChange: ModelLoadState;
-}
+};
 
 export class LoadManager extends EventEmitter<LoaderEvents> {
   private states = new Map<string, ModelLoadState>();

@@ -1,6 +1,6 @@
 export type EventHandler<T = unknown> = (data: T) => void;
 
-export class EventEmitter<Events extends Record<string, unknown>> {
+export class EventEmitter<Events extends { [K: string]: unknown }> {
   private listeners = new Map<keyof Events, Set<EventHandler>>();
 
   on<K extends keyof Events>(event: K, handler: EventHandler<Events[K]>): () => void {
