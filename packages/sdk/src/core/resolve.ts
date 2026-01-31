@@ -8,7 +8,7 @@ import { customLocal, customCloud } from '../providers/custom.js';
 const DEFAULT_TIERS = {
   high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
   medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
-  low: null,
+  low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
 } as const;
 
 function isLocalObjectConfig(value: unknown): value is LocalObjectConfig {
