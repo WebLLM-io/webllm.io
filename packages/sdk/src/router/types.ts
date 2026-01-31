@@ -5,7 +5,6 @@ export type RouteReason =
   | 'local-loading'
   | 'local-error'
   | 'low-battery'
-  | 'weak-device'
   | 'no-webgpu'
   | 'offline-fallback';
 

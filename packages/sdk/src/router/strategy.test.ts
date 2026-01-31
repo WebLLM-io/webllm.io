@@ -123,15 +123,26 @@ describe('decideRoute', () => {
   });
 
   describe('both providers — routing logic', () => {
-    it('should route to cloud when grade is C (weak device)', () => {
+    it('should route to local when grade is C and local is ready', () => {
+      const local = mockBackend(true);
+      const result = decideRoute({
+        localBackend: local,
+        cloudBackend: mockBackend(),
+        deviceStats: makeStats({ grade: 'C' }),
+      });
+      expect(result.decision).toBe('local');
+      expect(result.backend).toBe(local);
+    });
+
+    it('should route to cloud when grade is C and local is not ready', () => {
       const cloud = mockBackend();
       const result = decideRoute({
-        localBackend: mockBackend(true),
+        localBackend: mockBackend(false),
         cloudBackend: cloud,
         deviceStats: makeStats({ grade: 'C' }),
       });
       expect(result.decision).toBe('cloud');
-      expect(result.context.reason).toBe('weak-device');
+      expect(result.context.reason).toBe('local-loading');
     });
 
     it('should route to cloud when no GPU', () => {
