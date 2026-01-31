@@ -74,9 +74,6 @@ function getRouteReason(
   // No WebGPU
   if (!stats.gpu) return 'no-webgpu';
 
-  // Weak device (grade C)
-  if (stats.grade === 'C') return 'weak-device';
-
   // Low battery
   if (stats.battery && !stats.battery.charging && stats.battery.level < 0.15) {
     return 'low-battery';

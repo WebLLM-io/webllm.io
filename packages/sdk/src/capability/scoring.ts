@@ -6,7 +6,7 @@ import type { DeviceGrade } from './types.js';
  * S: ≥8192 MB — High-end desktop GPU, can run 8B+ models
  * A: ≥4096 MB — Mid-range GPU, can run 8B quantized models
  * B: ≥2048 MB — Low-end GPU, can run small models (3B or less)
- * C: <2048 MB — Insufficient for local inference
+ * C: <2048 MB — Low VRAM, uses lightweight model
  */
 export function scoreDevice(vramMB: number): DeviceGrade {
   if (vramMB >= 8192) return 'S';
