@@ -1,0 +1,20 @@
+{
+  "name": "@webllm-io/playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@webllm-io/sdk": "workspace:*",
+    "@mlc-ai/web-llm": "^0.2.80"
+  },
+  "devDependencies": {
+    "vite": "^6",
+    "typescript": "^5.5",
+    "@webllm-io/tsconfig": "workspace:*"
+  }
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebLLM.io Playground</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>WebLLM.io Playground</h1>
+      <div id="capability-info" class="info-panel">
+        <span id="webgpu-status">Checking WebGPU...</span>
+        <span id="device-grade">—</span>
+        <span id="vram-info">—</span>
+      </div>
+    </header>
+
+    <div id="controls">
+      <select id="mode-select">
+        <option value="auto">Auto (Local + Cloud fallback)</option>
+        <option value="local">Local Only</option>
+        <option value="cloud">Cloud Only</option>
+      </select>
+      <input type="text" id="cloud-url" placeholder="Cloud API URL (optional)" />
+    </div>
+
+    <div id="progress-container" class="hidden">
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+      <span id="progress-text">Loading model...</span>
+    </div>
+
+    <div id="messages"></div>
+
+    <div id="input-area">
+      <textarea id="user-input" placeholder="Type a message..." rows="2"></textarea>
+      <div id="input-buttons">
+        <button id="send-btn">Send</button>
+        <button id="abort-btn" class="hidden">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

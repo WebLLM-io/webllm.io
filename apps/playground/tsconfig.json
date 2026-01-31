@@ -1,0 +1,9 @@
+{
+  "extends": "../../tooling/tsconfig/app.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "noEmit": true,
+    "types": ["@webgpu/types"]
+  },
+  "include": ["*.ts", "vite-env.d.ts"]
+}
