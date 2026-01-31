@@ -5,90 +5,180 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebLLM.io Playground</title>
   <link rel="stylesheet" href="./style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>WebLLM.io Playground</h1>
-      <div id="capability-info" class="info-panel">
-        <span id="webgpu-status">Checking WebGPU...</span>
-        <span id="device-grade">—</span>
-        <span id="vram-info">—</span>
+  <div id="app-layout">
+    <div id="sidebar-overlay" class="hidden"></div>
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+          </svg>
+          <span>WebLLM.io</span>
+        </div>
+        <button id="close-sidebar" class="icon-btn mobile-only" title="Close Sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
-    </header>
 
-    <div id="controls">
-      <select id="mode-select">
-        <option value="auto">Auto (Local + Cloud fallback)</option>
-        <option value="local">Local Only</option>
-        <option value="cloud">Cloud Only</option>
-      </select>
-      <button id="settings-toggle" type="button">Settings</button>
-      <button id="clear-btn" type="button">Clear</button>
-    </div>
+      <div class="sidebar-content">
+        <!-- Status Card -->
+        <div class="status-card">
+          <div class="status-item">
+            <span class="status-label">WebGPU</span>
+            <span id="webgpu-status" class="status-value pending">Checking...</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">VRAM</span>
+            <span id="vram-info" class="status-value">—</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Grade</span>
+            <span id="device-grade" class="status-value">—</span>
+          </div>
+        </div>
 
-    <div id="settings-panel" class="hidden">
-      <!-- Local Settings -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Local</h3>
-        <div class="settings-grid">
-          <label for="setting-local-model">Model</label>
-          <input type="text" id="setting-local-model" placeholder="auto (device-based)" />
-
-          <label for="setting-local-worker">WebWorker</label>
-          <select id="setting-local-worker">
-            <option value="true" selected>Enabled</option>
-            <option value="false">Disabled</option>
+        <!-- Mode Selector -->
+        <div class="control-group">
+          <label class="group-label">Run Mode</label>
+          <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="auto">Auto</button>
+            <button class="mode-tab" data-mode="local">Local</button>
+            <button class="mode-tab" data-mode="cloud">Cloud</button>
+          </div>
+          <select id="mode-select" class="hidden-select">
+            <option value="auto">Auto</option>
+            <option value="local">Local</option>
+            <option value="cloud">Cloud</option>
           </select>
+        </div>
 
-          <label for="setting-local-cache">Cache (OPFS)</label>
-          <select id="setting-local-cache">
-            <option value="true" selected>Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
+        <!-- Settings Container -->
+        <div class="settings-container">
+          <!-- Local Settings -->
+          <div id="settings-local" class="settings-group active">
+            <div class="group-header">Local Config</div>
+            <div class="input-field">
+              <label for="setting-local-model">Model ID</label>
+              <input type="text" id="setting-local-model" placeholder="auto (default)" />
+            </div>
+            <div class="toggle-field">
+              <label for="setting-local-worker">WebWorker</label>
+              <input type="checkbox" id="setting-local-worker" checked />
+            </div>
+            <div class="toggle-field">
+              <label for="setting-local-cache">OPFS Cache</label>
+              <input type="checkbox" id="setting-local-cache" checked />
+            </div>
+          </div>
+
+          <!-- Cloud Settings -->
+          <div id="settings-cloud" class="settings-group">
+            <div class="group-header">Cloud Config</div>
+            <div class="input-field">
+              <label for="setting-base-url">Base URL</label>
+              <input type="text" id="setting-base-url" placeholder="https://api.openai.com/v1" />
+            </div>
+            <div class="input-field">
+              <label for="setting-api-key">API Key</label>
+              <input type="password" id="setting-api-key" placeholder="sk-..." />
+            </div>
+            <div class="input-field">
+              <label for="setting-model">Model Name</label>
+              <input type="text" id="setting-model" placeholder="gpt-4o-mini" />
+            </div>
+            <div class="row-inputs">
+              <div class="input-field">
+                <label>Timeout (ms)</label>
+                <input type="number" id="setting-timeout" placeholder="30000" />
+              </div>
+              <div class="input-field">
+                <label>Retries</label>
+                <input type="number" id="setting-retries" placeholder="1" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Cloud Settings -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Cloud</h3>
-        <div class="settings-grid">
-          <label for="setting-base-url">Base URL</label>
-          <input type="text" id="setting-base-url" placeholder="https://api.openai.com/v1" />
+      <div class="sidebar-footer">
+        <button id="apply-settings-btn" class="primary-btn full-width">
+          Apply & Restart
+        </button>
+        <button id="clear-btn" class="secondary-btn full-width">
+          Clear Chat
+        </button>
+      </div>
+    </aside>
 
-          <label for="setting-api-key">API Key</label>
-          <input type="password" id="setting-api-key" placeholder="sk-..." />
-
-          <label for="setting-model">Model</label>
-          <input type="text" id="setting-model" placeholder="gpt-4o-mini" />
-
-          <label for="setting-timeout">Timeout (ms)</label>
-          <input type="number" id="setting-timeout" placeholder="30000" />
-
-          <label for="setting-retries">Retries</label>
-          <input type="number" id="setting-retries" placeholder="1" />
+    <!-- Main Chat Area -->
+    <main id="chat-container">
+      <header class="mobile-header">
+        <button id="mobile-menu-btn" class="icon-btn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18"></path>
+          </svg>
+        </button>
+        <span>Playground</span>
+      </header>
+      
+      <!-- Progress Bar (Overlay) -->
+      <div id="progress-container" class="progress-overlay hidden">
+        <div class="progress-card">
+          <div class="loader-spinner"></div>
+          <div class="progress-info">
+            <span id="progress-text">Loading model...</span>
+            <div class="progress-track">
+              <div id="progress-fill"></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <button id="apply-settings-btn" type="button">Apply &amp; Reinitialize</button>
-    </div>
-
-    <div id="progress-container" class="hidden">
-      <div id="progress-bar"><div id="progress-fill"></div></div>
-      <span id="progress-text">Loading model...</span>
-    </div>
-
-    <div id="messages"></div>
-
-    <div id="input-area">
-      <textarea id="user-input" placeholder="Type a message..." rows="2"></textarea>
-      <div id="input-buttons">
-        <button id="send-btn">Send</button>
-        <button id="abort-btn" class="hidden">Stop</button>
+      <!-- Messages Stream -->
+      <div id="messages">
+        <div class="empty-state">
+          <div class="logo-large">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <h2>WebLLM Playground</h2>
+          <p>Run large language models directly in your browser.</p>
+        </div>
       </div>
-    </div>
+
+      <!-- Input Area -->
+      <div id="input-wrapper">
+        <div class="input-box">
+          <textarea id="user-input" placeholder="Type a message..." rows="1"></textarea>
+          <div class="input-actions">
+            <button id="abort-btn" class="action-btn stop hidden" title="Stop">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+              </svg>
+            </button>
+            <button id="send-btn" class="action-btn send" title="Send" disabled>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="footer-note">
+          AI models can make mistakes. Verify important information.
+        </div>
+      </div>
+    </main>
   </div>
-
+  
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

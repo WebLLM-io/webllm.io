@@ -1,14 +1,12 @@
 import { createClient, checkCapability } from '@webllm-io/sdk';
 import type { WebLLMClient, ChatCompletionChunk, Message } from '@webllm-io/sdk';
 
-// --- Playground config persistence ---
+// --- Types ---
 interface PlaygroundConfig {
   mode: string;
-  // local
   localModel: string;
-  localWebWorker: string;
-  localCache: string;
-  // cloud
+  localWebWorker: boolean;
+  localCache: boolean;
   cloudBaseURL: string;
   cloudApiKey: string;
   cloudModel: string;
@@ -16,18 +14,69 @@ interface PlaygroundConfig {
   cloudRetries: string;
 }
 
-const CONFIG_KEY = 'webllm-playground-config';
+const CONFIG_KEY = 'webllm-playground-config-v2';
 
+// --- DOM Elements ---
+const sidebar = document.getElementById('sidebar')!;
+const sidebarOverlay = document.getElementById('sidebar-overlay')!;
+const closeSidebarBtn = document.getElementById('close-sidebar')!;
+const mobileMenuBtn = document.getElementById('mobile-menu-btn')!;
+
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.add('hidden');
+}
+
+function openSidebar() {
+  sidebar.classList.add('open');
+  sidebarOverlay.classList.remove('hidden');
+}
+
+const modeTabs = document.querySelectorAll('.mode-tab');
+const modeSelect = document.getElementById('mode-select') as HTMLSelectElement;
+const settingsGroups = document.querySelectorAll('.settings-group');
+
+const webgpuStatus = document.getElementById('webgpu-status')!;
+const deviceGrade = document.getElementById('device-grade')!;
+const vramInfo = document.getElementById('vram-info')!;
+
+const settingLocalModel = document.getElementById('setting-local-model') as HTMLInputElement;
+const settingLocalWorker = document.getElementById('setting-local-worker') as HTMLInputElement;
+const settingLocalCache = document.getElementById('setting-local-cache') as HTMLInputElement;
+const settingBaseURL = document.getElementById('setting-base-url') as HTMLInputElement;
+const settingApiKey = document.getElementById('setting-api-key') as HTMLInputElement;
+const settingModel = document.getElementById('setting-model') as HTMLInputElement;
+const settingTimeout = document.getElementById('setting-timeout') as HTMLInputElement;
+const settingRetries = document.getElementById('setting-retries') as HTMLInputElement;
+
+const applySettingsBtn = document.getElementById('apply-settings-btn') as HTMLButtonElement;
+const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+
+const progressContainer = document.getElementById('progress-container')!;
+const progressFill = document.getElementById('progress-fill')!;
+const progressText = document.getElementById('progress-text')!;
+
+const messagesDiv = document.getElementById('messages')!;
+const userInput = document.getElementById('user-input') as HTMLTextAreaElement;
+const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
+const abortBtn = document.getElementById('abort-btn') as HTMLButtonElement;
+
+// --- State ---
+let client: WebLLMClient | null = null;
+let abortController: AbortController | null = null;
+const chatHistory: Message[] = [];
+
+// --- Config Logic ---
 function loadConfig(): PlaygroundConfig {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (raw) return JSON.parse(raw);
-  } catch { /* ignore corrupt data */ }
+  } catch { /* ignore */ }
   return {
     mode: 'auto',
     localModel: '',
-    localWebWorker: 'true',
-    localCache: 'true',
+    localWebWorker: true,
+    localCache: true,
     cloudBaseURL: '',
     cloudApiKey: '',
     cloudModel: '',
@@ -40,12 +89,32 @@ function saveConfig(config: PlaygroundConfig) {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
 }
 
+function syncUIWithConfig(config: PlaygroundConfig) {
+  // Mode Tabs
+  modeTabs.forEach(tab => {
+    tab.classList.toggle('active', tab.getAttribute('data-mode') === config.mode);
+  });
+  modeSelect.value = config.mode;
+  updateSettingsVisibility(config.mode);
+
+  // Inputs
+  settingLocalModel.value = config.localModel;
+  settingLocalWorker.checked = config.localWebWorker;
+  settingLocalCache.checked = config.localCache;
+  settingBaseURL.value = config.cloudBaseURL;
+  settingApiKey.value = config.cloudApiKey;
+  settingModel.value = config.cloudModel;
+  settingTimeout.value = config.cloudTimeout;
+  settingRetries.value = config.cloudRetries;
+}
+
 function collectConfig(): PlaygroundConfig {
+  const activeTab = document.querySelector('.mode-tab.active');
   return {
-    mode: modeSelect.value,
+    mode: activeTab?.getAttribute('data-mode') || 'auto',
     localModel: settingLocalModel.value.trim(),
-    localWebWorker: settingLocalWorker.value,
-    localCache: settingLocalCache.value,
+    localWebWorker: settingLocalWorker.checked,
+    localCache: settingLocalCache.checked,
     cloudBaseURL: settingBaseURL.value.trim(),
     cloudApiKey: settingApiKey.value.trim(),
     cloudModel: settingModel.value.trim(),
@@ -54,269 +123,222 @@ function collectConfig(): PlaygroundConfig {
   };
 }
 
-function applyConfigToDOM(config: PlaygroundConfig) {
-  modeSelect.value = config.mode;
-  settingLocalModel.value = config.localModel ?? '';
-  settingLocalWorker.value = config.localWebWorker ?? 'true';
-  settingLocalCache.value = config.localCache ?? 'true';
-  settingBaseURL.value = config.cloudBaseURL;
-  settingApiKey.value = config.cloudApiKey;
-  settingModel.value = config.cloudModel;
-  settingTimeout.value = config.cloudTimeout;
-  settingRetries.value = config.cloudRetries;
+function updateSettingsVisibility(mode: string) {
+  settingsGroups.forEach(group => {
+    const isCloud = group.id === 'settings-cloud';
+    const isLocal = group.id === 'settings-local';
+    if (mode === 'auto') group.classList.add('active');
+    else if (mode === 'local') {
+      isLocal ? group.classList.add('active') : group.classList.remove('active');
+    } else if (mode === 'cloud') {
+      isCloud ? group.classList.add('active') : group.classList.remove('active');
+    }
+  });
 }
 
-// --- DOM elements ---
-const webgpuStatus = document.getElementById('webgpu-status')!;
-const deviceGrade = document.getElementById('device-grade')!;
-const vramInfo = document.getElementById('vram-info')!;
-const modeSelect = document.getElementById('mode-select') as HTMLSelectElement;
-const settingsToggle = document.getElementById('settings-toggle') as HTMLButtonElement;
-const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
-const settingsPanel = document.getElementById('settings-panel')!;
-const settingLocalModel = document.getElementById('setting-local-model') as HTMLInputElement;
-const settingLocalWorker = document.getElementById('setting-local-worker') as HTMLSelectElement;
-const settingLocalCache = document.getElementById('setting-local-cache') as HTMLSelectElement;
-const settingBaseURL = document.getElementById('setting-base-url') as HTMLInputElement;
-const settingApiKey = document.getElementById('setting-api-key') as HTMLInputElement;
-const settingModel = document.getElementById('setting-model') as HTMLInputElement;
-const settingTimeout = document.getElementById('setting-timeout') as HTMLInputElement;
-const settingRetries = document.getElementById('setting-retries') as HTMLInputElement;
-const applySettingsBtn = document.getElementById('apply-settings-btn') as HTMLButtonElement;
-const progressContainer = document.getElementById('progress-container')!;
-const progressFill = document.getElementById('progress-fill')!;
-const progressText = document.getElementById('progress-text')!;
-const messagesDiv = document.getElementById('messages')!;
-const userInput = document.getElementById('user-input') as HTMLTextAreaElement;
-const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
-const abortBtn = document.getElementById('abort-btn') as HTMLButtonElement;
-
-let client: WebLLMClient | null = null;
-let abortController: AbortController | null = null;
-const messages: Message[] = [];
-
-// --- Capability detection ---
+// --- SDK Integration ---
 async function detectCapability() {
   try {
     const report = await checkCapability();
-    webgpuStatus.textContent = report.webgpu ? 'WebGPU ✓' : 'No WebGPU';
-    webgpuStatus.style.color = report.webgpu ? '#3fb950' : '#f85149';
-    deviceGrade.textContent = `Grade: ${report.grade}`;
-    vramInfo.textContent = report.gpu
-      ? `VRAM: ~${report.gpu.vram}MB`
-      : 'No GPU info';
+    webgpuStatus.textContent = report.webgpu ? 'Available' : 'Unavailable';
+    webgpuStatus.className = `status-value ${report.webgpu ? 'success' : 'error'}`;
+    deviceGrade.textContent = report.grade;
+    vramInfo.textContent = report.gpu ? `${report.gpu.vram}MB` : 'Unknown';
   } catch {
-    webgpuStatus.textContent = 'Detection failed';
+    webgpuStatus.textContent = 'Error';
+    webgpuStatus.className = 'status-value error';
   }
 }
 
-// --- Build cloud config from settings ---
-function buildCloudConfig(): import('@webllm-io/sdk').CloudConfig | undefined {
-  const baseURL = settingBaseURL.value.trim();
-  const apiKey = settingApiKey.value.trim();
-  const model = settingModel.value.trim();
-  const timeout = settingTimeout.value.trim();
-  const retries = settingRetries.value.trim();
-
-  if (!baseURL) return undefined;
-
-  // If only baseURL is provided, return as string
-  if (!apiKey && !model && !timeout && !retries) {
-    return baseURL;
-  }
-
-  // Build full object config
+function buildCloudConfig(config: PlaygroundConfig) {
+  if (!config.cloudBaseURL) return undefined;
   return {
-    baseURL,
-    ...(apiKey && { apiKey }),
-    ...(model && { model }),
-    ...(timeout && { timeout: parseInt(timeout, 10) }),
-    ...(retries && { retries: parseInt(retries, 10) }),
+    baseURL: config.cloudBaseURL,
+    ...(config.cloudApiKey && { apiKey: config.cloudApiKey }),
+    ...(config.cloudModel && { model: config.cloudModel }),
+    ...(config.cloudTimeout && { timeout: parseInt(config.cloudTimeout, 10) }),
+    ...(config.cloudRetries && { retries: parseInt(config.cloudRetries, 10) }),
   };
 }
 
-// --- Build local config from settings ---
-function buildLocalConfig(): import('@webllm-io/sdk').LocalConfig {
-  const model = settingLocalModel.value.trim();
-  const useWebWorker = settingLocalWorker.value !== 'false';
-  const useCache = settingLocalCache.value !== 'false';
-
-  // If all defaults, return 'auto'
-  if (!model && useWebWorker && useCache) return 'auto';
-
-  return {
-    ...(model ? { model } : {}),
-    useWebWorker,
-    useCache,
-  };
-}
-
-// --- Client initialization ---
 function initClient() {
-  if (client) {
-    client.dispose();
-    client = null;
-  }
-
+  if (client) client.dispose();
+  
   const config = collectConfig();
   saveConfig(config);
 
-  const mode = modeSelect.value;
-  const cloud = buildCloudConfig();
+  const cloud = buildCloudConfig(config);
+  const local = {
+    model: config.localModel || undefined,
+    useWebWorker: config.localWebWorker,
+    useCache: config.localCache,
+  };
 
   try {
-    if (mode === 'local') {
-      client = createClient({
-        local: buildLocalConfig(),
-        onProgress: handleProgress,
-      });
-    } else if (mode === 'cloud') {
+    if (config.mode === 'local') {
+      client = createClient({ local, onProgress: handleProgress });
+    } else if (config.mode === 'cloud') {
       if (!cloud) {
-        addSystemMessage('Please configure a Cloud Base URL in Settings for cloud-only mode.');
+        addSystemMessage('Please provide a Cloud Base URL.');
         return;
       }
-      client = createClient({
-        local: false,
-        cloud,
-      });
+      client = createClient({ local: false, cloud });
     } else {
-      // auto mode
-      client = createClient({
-        local: buildLocalConfig(),
-        cloud,
-        onProgress: handleProgress,
-      });
+      client = createClient({ local, cloud, onProgress: handleProgress });
     }
-    addSystemMessage(`Client initialized (${mode} mode)`);
+    addSystemMessage(`Client initialized: ${config.mode.toUpperCase()} mode`);
+    sendBtn.disabled = false;
   } catch (err) {
-    addSystemMessage(`Failed to initialize: ${(err as Error).message}`);
+    addSystemMessage(`Init Error: ${(err as Error).message}`);
   }
 }
 
 function handleProgress(p: { stage: string; progress: number; model: string }) {
   progressContainer.classList.remove('hidden');
-  progressFill.style.width = `${Math.round(p.progress * 100)}%`;
-  progressText.textContent = `${p.stage}: ${p.model} (${Math.round(p.progress * 100)}%)`;
+  const percent = Math.round(p.progress * 100);
+  progressFill.style.width = `${percent}%`;
+  progressText.textContent = `${p.stage}: ${p.model} (${percent}%)`;
   if (p.progress >= 1) {
-    setTimeout(() => progressContainer.classList.add('hidden'), 1000);
+    setTimeout(() => progressContainer.classList.add('hidden'), 800);
   }
 }
 
-// --- Message display ---
-function addMessage(role: 'user' | 'assistant' | 'system', content: string): HTMLDivElement {
+// --- UI Helpers ---
+function addMessage(role: 'user' | 'assistant', content: string) {
+  // Remove empty state if present
+  const empty = messagesDiv.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `message ${role}`;
+  
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.textContent = content;
+  
+  msgDiv.appendChild(contentDiv);
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  return contentDiv;
+}
+
+function addSystemMessage(text: string) {
   const div = document.createElement('div');
-  div.className = `message ${role}`;
-  div.textContent = content;
+  div.className = 'system-tag';
+  div.textContent = `• ${text} •`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  return div;
 }
 
-function addSystemMessage(content: string) {
-  const div = addMessage('assistant', `[System] ${content}`);
-  div.style.color = '#888';
-  div.style.fontStyle = 'italic';
-}
-
-// --- Clear chat ---
-function clearChat() {
-  messages.length = 0;
-  messagesDiv.innerHTML = '';
-  addSystemMessage('Chat cleared.');
-}
-
-// --- Send message ---
-async function sendMessage() {
+// --- Chat Actions ---
+async function handleSend() {
   const text = userInput.value.trim();
   if (!text || !client) return;
 
   userInput.value = '';
+  userInput.style.height = 'auto';
   addMessage('user', text);
-  messages.push({ role: 'user', content: text });
+  chatHistory.push({ role: 'user', content: text });
 
-  sendBtn.disabled = true;
+  sendBtn.classList.add('hidden');
   abortBtn.classList.remove('hidden');
   abortController = new AbortController();
 
-  const assistantDiv = addMessage('assistant', '');
+  const assistantContent = addMessage('assistant', '');
   let fullContent = '';
-  let responseModel = '';
+  let modelName = '';
 
   try {
     const stream = client.chat.completions.create({
-      messages: [...messages],
+      messages: [...chatHistory],
       stream: true,
       signal: abortController.signal,
     });
 
     for await (const chunk of stream as AsyncIterable<ChatCompletionChunk>) {
-      if (!responseModel && chunk.model) {
-        responseModel = chunk.model;
-      }
+      if (!modelName && chunk.model) modelName = chunk.model;
       const delta = chunk.choices[0]?.delta?.content ?? '';
       fullContent += delta;
-      assistantDiv.textContent = fullContent;
+      assistantContent.textContent = fullContent;
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // Wrap content in span and append model tag
-    const contentSpan = document.createElement('span');
-    contentSpan.textContent = fullContent;
-    assistantDiv.innerHTML = '';
-    assistantDiv.appendChild(contentSpan);
-    if (responseModel) {
+    if (modelName) {
       const tag = document.createElement('span');
       tag.className = 'model-tag';
-      tag.textContent = responseModel;
-      assistantDiv.appendChild(tag);
+      tag.textContent = modelName;
+      assistantContent.parentElement?.appendChild(tag);
     }
+    chatHistory.push({ role: 'assistant', content: fullContent });
 
-    messages.push({ role: 'assistant', content: fullContent });
-  } catch (err) {
-    const error = err as Error;
-    if (error.message?.includes('abort') || error.message?.includes('Abort')) {
-      assistantDiv.textContent = fullContent + '\n[Aborted]';
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      assistantContent.textContent += ' [Interrupted]';
     } else {
-      assistantDiv.textContent = `[Error] ${error.message}`;
-      assistantDiv.style.color = '#f85149';
+      assistantContent.textContent = `Error: ${err.message}`;
+      assistantContent.style.color = 'var(--error)';
     }
   } finally {
-    sendBtn.disabled = false;
+    sendBtn.classList.remove('hidden');
     abortBtn.classList.add('hidden');
     abortController = null;
   }
 }
 
-// --- Settings toggle ---
-function toggleSettings() {
-  const isHidden = settingsPanel.classList.contains('hidden');
-  settingsPanel.classList.toggle('hidden');
-  settingsToggle.classList.toggle('active', isHidden);
-}
+// --- Event Listeners ---
+mobileMenuBtn.addEventListener('click', openSidebar);
+closeSidebarBtn.addEventListener('click', closeSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
 
-// --- Event listeners ---
-modeSelect.addEventListener('change', initClient);
+modeTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    modeTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const mode = tab.getAttribute('data-mode')!;
+    updateSettingsVisibility(mode);
+    initClient();
+  });
+});
 
-settingsToggle.addEventListener('click', toggleSettings);
-
-clearBtn.addEventListener('click', clearChat);
-
-applySettingsBtn.addEventListener('click', initClient);
-
-sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('input', () => {
+  userInput.style.height = 'auto';
+  userInput.style.height = userInput.scrollHeight + 'px';
+});
 
 userInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendMessage();
+    handleSend();
   }
 });
 
-abortBtn.addEventListener('click', () => {
-  abortController?.abort();
+sendBtn.addEventListener('click', handleSend);
+abortBtn.addEventListener('click', () => abortController?.abort());
+
+applySettingsBtn.addEventListener('click', () => {
+  initClient();
+  if (window.innerWidth <= 768) closeSidebar();
 });
 
-// --- Init ---
-applyConfigToDOM(loadConfig());
+clearBtn.addEventListener('click', () => {
+  chatHistory.length = 0;
+  messagesDiv.innerHTML = `
+    <div class="empty-state">
+      <div class="logo-large">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+      <h2>WebLLM Playground</h2>
+      <p>Run large language models directly in your browser.</p>
+    </div>
+  `;
+  addSystemMessage('Chat history cleared');
+  if (window.innerWidth <= 768) closeSidebar();
+});
+
+// --- Boot ---
+const initialConfig = loadConfig();
+syncUIWithConfig(initialConfig);
 detectCapability();
 initClient();
