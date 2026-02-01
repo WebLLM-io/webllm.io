@@ -120,6 +120,14 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 - @mlc-ai/web-llm as optional peerDependency (dynamic import)
 - Astro apps (web, docs) inherit `astro/tsconfigs/strict`, not monorepo tsconfig
 
+## Content Accuracy Conventions
+
+- Device scoring thresholds MUST match `packages/sdk/src/capability/scoring.ts`
+- Default model tiers MUST match `DEFAULT_TIERS` in `packages/sdk/src/core/resolve.ts`
+- Tier mapping (grade→tier) MUST match `resolveModelForGrade()` in `packages/sdk/src/inference/local/mlc-backend.ts`
+- CapabilityReport examples MUST match `packages/sdk/src/capability/types.ts`
+- Cloud provider examples must only list OpenAI-compatible APIs
+
 ## Key Dependencies
 
 - `@mlc-ai/web-llm` — Optional peer dep for local MLC inference
