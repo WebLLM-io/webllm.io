@@ -30,7 +30,7 @@ interface CreateClientOptions {
 Configuration for local inference using WebGPU and MLC models. See [Config Types](/api/config-types) for all supported formats.
 
 - Type: `LocalConfig`
-- Default: `'auto'`
+- Default: `undefined` (disabled)
 - Can be: `'auto'`, `false`, `null`, model string, config object, function, or provider instance
 
 #### `cloud`
@@ -70,12 +70,12 @@ Returns a [`WebLLMClient`](/api/webllm-client) instance with chat completions AP
 
 ## Examples
 
-### Zero-config (local only)
+### Local only (auto model selection)
 
 ```ts
 import { createClient } from '@webllm-io/sdk';
 
-const client = createClient();
+const client = createClient({ local: 'auto' });
 // Uses local inference with auto device-based model selection
 ```
 

@@ -55,7 +55,7 @@ const jsonReq = withJsonOutput(req);
 ```ts
 import { createClient, withJsonOutput } from '@webllm-io/sdk';
 
-const client = createClient();
+const client = createClient({ local: 'auto' });
 
 const response = await client.chat.completions.create(
   withJsonOutput({

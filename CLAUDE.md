@@ -24,6 +24,7 @@ pnpm + Turborepo monorepo with the following packages:
 - **Zero-dep cloud** — SSE parsing is self-implemented (~30 lines), no openai SDK dependency
 - **Serial request queue** — MLCEngine is single-threaded; RequestQueue serializes local inference
 - **Device scoring** — S/A/B/C grades based on maxStorageBufferBindingSize (VRAM proxy); all grades support local inference (C uses Qwen2.5-1.5B-Instruct lightweight model)
+- **Explicit opt-in** — Both local and cloud default to disabled; users must explicitly configure at least one engine
 
 ## SDK Module Layout
 

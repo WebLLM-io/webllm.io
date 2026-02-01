@@ -22,8 +22,8 @@ function isLocalObjectConfig(value: unknown): value is LocalObjectConfig {
   );
 }
 
-export function resolveLocal(config: LocalConfig = 'auto'): ResolvedLocalBackend | null {
-  if (config === false || config === null) return null;
+export function resolveLocal(config?: LocalConfig): ResolvedLocalBackend | null {
+  if (config === undefined || config === false || config === null) return null;
   if (config === 'auto') return mlc({ tiers: DEFAULT_TIERS });
   if (isResolvedLocal(config)) return config;
   if (typeof config === 'string') return mlc({ model: config });

@@ -133,7 +133,7 @@ console.log(response.choices[0].message.content);
 ### Preload model before inference
 
 ```ts
-const client = createClient();
+const client = createClient({ local: 'auto' });
 
 // Preload model
 await client.local.load('Qwen2.5-3B-Instruct-q4f16_1-MLC');
@@ -175,7 +175,7 @@ if (cap.grade === 'S' || cap.grade === 'A') {
 ```ts
 // React example
 useEffect(() => {
-  const client = createClient();
+  const client = createClient({ local: 'auto' });
 
   return () => {
     client.dispose();
@@ -186,7 +186,7 @@ useEffect(() => {
 ### Manual model switching
 
 ```ts
-const client = createClient();
+const client = createClient({ local: 'auto' });
 
 // Load first model
 await client.local.load('Qwen2.5-1.5B-Instruct-q4f16_1-MLC');

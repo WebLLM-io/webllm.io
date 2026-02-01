@@ -43,10 +43,9 @@ describe('resolveLocal', () => {
     expect(result!.providerName).toBe('mlc');
   });
 
-  it('should return mlc provider when config is undefined (default)', () => {
+  it('should return null when config is undefined (default disabled)', () => {
     const result = resolveLocal();
-    expect(result).not.toBeNull();
-    expect(result!.__kind).toBe('resolved-local');
+    expect(result).toBeNull();
   });
 
   it('should return null when config is false', () => {

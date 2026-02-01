@@ -152,6 +152,8 @@ function generateCodeSnippet() {
       lines.push('  local: {');
       lines.push(localProps.join(',\n'));
       lines.push('  },');
+    } else {
+      lines.push("  local: 'auto',");
     }
   } else if (config.mode === 'cloud') {
     lines.push('  local: false,');
@@ -175,6 +177,8 @@ function generateCodeSnippet() {
       lines.push('  local: {');
       lines.push(localProps.join(',\n'));
       lines.push('  },');
+    } else {
+      lines.push("  local: 'auto',");
     }
     if (config.cloudBaseURL) {
       lines.push('  cloud: {');
@@ -206,6 +210,17 @@ async function detectCapability() {
   }
 }
 
+function buildLocalConfig(config: PlaygroundConfig): 'auto' | { model: string; useWebWorker: boolean; useCache: boolean } {
+  if (config.localModel) {
+    return {
+      model: config.localModel,
+      useWebWorker: config.localWebWorker,
+      useCache: config.localCache,
+    };
+  }
+  return 'auto';
+}
+
 function buildCloudConfig(config: PlaygroundConfig) {
   if (!config.cloudBaseURL) return undefined;
   return {
@@ -224,11 +239,7 @@ function initClient() {
   saveConfig(config);
 
   const cloud = buildCloudConfig(config);
-  const local = {
-    model: config.localModel || undefined,
-    useWebWorker: config.localWebWorker,
-    useCache: config.localCache,
-  };
+  const local = buildLocalConfig(config);
 
   try {
     if (config.mode === 'local') {
