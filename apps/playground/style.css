@@ -74,7 +74,10 @@ body {
   font-weight: 600;
   font-size: 1.1rem;
   color: var(--text-primary);
+  text-decoration: none;
 }
+
+.logo:hover { color: var(--accent-hover); }
 
 .logo svg { color: var(--accent); }
 
