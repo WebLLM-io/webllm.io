@@ -9,6 +9,7 @@ export default defineConfig({
       title: 'WebLLM.io',
       components: {
         SiteTitle: './src/components/SiteTitle.astro',
+        Footer: './src/components/Footer.astro',
       },
       social: {
         github: 'https://github.com/WebLLM-io/webllm.io',

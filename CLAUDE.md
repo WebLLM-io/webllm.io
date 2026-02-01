@@ -129,6 +129,7 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 - @mlc-ai/web-llm as optional peerDependency (dynamic import)
 - Astro apps (web, docs) inherit `astro/tsconfigs/strict`, not monorepo tsconfig
 - Cross-app navigation: all sub-app logos/titles link back to main site `/` (not their own base path)
+- Copyright notice: all app footers display `© 2025 WebLLM.io · MIT License`
 - License: MIT
 
 ## Content Accuracy Conventions

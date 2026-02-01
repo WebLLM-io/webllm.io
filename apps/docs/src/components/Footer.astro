@@ -1,0 +1,15 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+<Default {...Astro.props}><slot /></Default>
+<div class="copyright-notice">© 2025 WebLLM.io · MIT License</div>
+<style>
+  .copyright-notice {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-3);
+    padding: 1rem 0;
+    border-top: 1px solid var(--sl-color-gray-5);
+  }
+</style>
