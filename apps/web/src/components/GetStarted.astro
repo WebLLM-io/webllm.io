@@ -16,6 +16,10 @@
       <a href="/docs" class="btn btn-primary">Read the Docs</a>
       <a href="/playground" class="btn btn-secondary">Try Playground</a>
     </div>
+
+    <p class="roadmap-hint">
+      Coming soon: <code>@webllm-io/ui</code> components · <code>@webllm-io/rag</code> private document search
+    </p>
   </div>
 </section>
 
@@ -46,6 +50,18 @@
   .cta-row {
     display: flex;
     gap: 1rem;
+  }
+
+  .roadmap-hint {
+    margin-top: 2rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  .roadmap-hint code {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
   }
 
   @media (max-width: 768px) {
