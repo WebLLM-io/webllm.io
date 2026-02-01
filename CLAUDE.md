@@ -71,7 +71,7 @@ Requires COOP/COEP headers (configured in vite.config.ts) for SharedArrayBuffer.
 pnpm --filter @webllm-io/web dev      # Start on localhost:4321
 ```
 
-Astro static site with dark theme. Sections: Header → Hero → ProblemStatement → Solution → HowItWorks → DXJourney → Roadmap → GetStarted → Footer. Global styles in `src/styles/global.css` using CSS custom properties (no Tailwind).
+Astro static site with dark theme. Sections: Header → Hero → Solution → DXJourney → GetStarted → Footer. Global styles in `src/styles/global.css` using CSS custom properties (no Tailwind).
 
 ### Documentation (apps/docs)
 
