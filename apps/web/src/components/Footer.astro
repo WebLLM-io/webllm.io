@@ -1,0 +1,83 @@
+---
+---
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-left">
+      <span class="footer-brand">WebLLM<span class="footer-dot">.io</span></span>
+      <span class="footer-license">MIT License</span>
+    </div>
+    <div class="footer-links">
+      <a href="/docs" class="footer-link">Docs</a>
+      <a href="/playground" class="footer-link">Playground</a>
+      <a
+        href="https://x.com/webllm_io"
+        class="footer-link"
+        target="_blank"
+        rel="noopener noreferrer"
+      >X</a>
+      <a
+        href="https://github.com/WebLLM-io/webllm.io"
+        class="footer-link"
+        target="_blank"
+        rel="noopener noreferrer"
+      >GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--color-border-subtle);
+    padding: 2rem 0;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .footer-brand {
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+
+  .footer-dot {
+    color: var(--color-accent);
+  }
+
+  .footer-license {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .footer-link {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    transition: color 0.2s ease;
+  }
+
+  .footer-link:hover {
+    color: var(--color-text);
+  }
+
+  @media (max-width: 768px) {
+    .footer-inner {
+      flex-direction: column;
+      gap: 1rem;
+      text-align: center;
+    }
+  }
+</style>

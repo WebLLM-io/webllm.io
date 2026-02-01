@@ -1,0 +1,115 @@
+---
+const highlights = [
+  {
+    title: 'Smart Routing',
+    description: 'Real-time hardware fingerprinting determines local vs cloud automatically.',
+    color: 'var(--color-accent)',
+  },
+  {
+    title: 'Zero Config',
+    description: "One line: local: 'auto'. Device grading and model selection handled for you.",
+    color: 'var(--color-cyan)',
+  },
+  {
+    title: 'WebWorker Isolation',
+    description: 'Inference runs in a Worker thread. Your UI never freezes.',
+    color: 'var(--color-green)',
+  },
+  {
+    title: 'OPFS Persistence',
+    description: 'Models cached in Origin Private File System. Survives browser cache clears.',
+    color: 'var(--color-amber)',
+  },
+];
+---
+
+<section class="section how-it-works">
+  <div class="container">
+    <p class="section-label">Architecture</p>
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-subtitle">
+      The SDK makes one decision: should this request run locally or in the cloud?
+    </p>
+
+    <div class="architecture-diagram">
+      <pre class="code-block diagram-code"><code>Your App
+  <span class="keyword">&rarr;</span> <span class="function">createClient</span>()
+    <span class="keyword">&rarr;</span> Hardware Fingerprint <span class="comment">(WebGPU probe, VRAM estimation)</span>
+      <span class="keyword">&rarr;</span> Device Grade <span class="comment">(S / A / B / C)</span>
+        <span class="keyword">&rarr;</span> Route Decision
+          <span class="punctuation">&boxvr;&HorizontalLine;</span> <span class="type">Local</span>: WebGPU + MLC Engine <span class="comment">(WebWorker)</span>
+          <span class="punctuation">&boxur;&HorizontalLine;</span> <span class="string">Cloud</span>: fetchSSE <span class="comment">(zero-dep, OpenAI-compatible)</span></code></pre>
+    </div>
+
+    <div class="highlights-grid">
+      {highlights.map((h) => (
+        <div class="card highlight-card">
+          <div class="highlight-dot" style={`background: ${h.color};`}></div>
+          <h3 class="highlight-title">{h.title}</h3>
+          <p class="highlight-desc">{h.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .how-it-works {
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .section-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+  }
+
+  .architecture-diagram {
+    margin-bottom: 3rem;
+  }
+
+  .diagram-code {
+    font-size: 0.9375rem;
+    line-height: 1.8;
+  }
+
+  .highlights-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+
+  .highlight-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.5rem;
+  }
+
+  .highlight-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-bottom: 0.25rem;
+  }
+
+  .highlight-title {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .highlight-desc {
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .highlights-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

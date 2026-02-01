@@ -1,0 +1,18 @@
+{
+  "name": "@webllm-io/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "astro": "^5"
+  },
+  "devDependencies": {
+    "typescript": "^5.5"
+  }
+}

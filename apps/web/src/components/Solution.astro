@@ -1,0 +1,193 @@
+---
+---
+
+<section class="section solution">
+  <div class="container">
+    <p class="section-label">The Solution</p>
+    <h2 class="section-title">One API. <span class="gradient-text">Adaptive Runtime.</span></h2>
+    <p class="section-subtitle">
+      Write your code once. The SDK detects device capability and routes inference automatically.
+    </p>
+
+    <div class="code-window">
+      <div class="code-header">
+        <span class="code-dot" style="background: #ff5f57;"></span>
+        <span class="code-dot" style="background: #febc2e;"></span>
+        <span class="code-dot" style="background: #28c840;"></span>
+        <span class="code-filename">app.ts</span>
+      </div>
+      <pre class="code-block"><code><span class="keyword">import</span> {'{'} createClient {'}'} <span class="keyword">from</span> <span class="string">'@webllm-io/sdk'</span>;
+
+<span class="keyword">const</span> client = <span class="function">createClient</span>({'{'}
+  local: <span class="string">'auto'</span>,                        <span class="comment">// auto-detect device capability</span>
+  cloud: {'{'} baseURL: <span class="string">'https://api.openai.com/v1'</span> {'}'}, <span class="comment">// fallback target</span>
+{'}'});
+
+<span class="comment">// Same API, same types — whether local or cloud</span>
+<span class="keyword">const</span> stream = <span class="keyword">await</span> client.chat.completions.<span class="function">create</span>({'{'}
+  messages: [{'{'} role: <span class="string">'user'</span>, content: <span class="string">'Explain quantum computing'</span> {'}'}],
+  stream: <span class="type">true</span>,
+{'}'});</code></pre>
+    </div>
+
+    <div class="routes">
+      <div class="route-card">
+        <div class="route-badge route-badge-local">S / A Grade</div>
+        <div class="route-path">
+          <span class="route-step">SDK</span>
+          <span class="route-arrow">&rarr;</span>
+          <span class="route-step">Device Score: S</span>
+          <span class="route-arrow">&rarr;</span>
+          <span class="route-step highlight-local">WebGPU Local Inference</span>
+        </div>
+        <p class="route-desc">MacBook Pro, RTX GPUs — full local inference, zero latency</p>
+      </div>
+      <div class="route-card">
+        <div class="route-badge route-badge-mid">B Grade</div>
+        <div class="route-path">
+          <span class="route-step">SDK</span>
+          <span class="route-arrow">&rarr;</span>
+          <span class="route-step">Device Score: B</span>
+          <span class="route-arrow">&rarr;</span>
+          <span class="route-step highlight-mid">Local with Smaller Model</span>
+        </div>
+        <p class="route-desc">iPad, integrated GPUs — lightweight local model selected automatically</p>
+      </div>
+      <div class="route-card">
+        <div class="route-badge route-badge-cloud">C Grade</div>
+        <div class="route-path">
+          <span class="route-step">SDK</span>
+          <span class="route-arrow">&rarr;</span>
+          <span class="route-step">Device Score: C</span>
+          <span class="route-arrow">&rarr;</span>
+          <span class="route-step highlight-cloud">Cloud Fallback</span>
+        </div>
+        <p class="route-desc">Older phones, no WebGPU — seamless cloud routing, same API</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .solution {
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .section-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+  }
+
+  .code-window {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 3rem;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-bg-elevated);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .code-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .code-filename {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    margin-left: 0.5rem;
+    font-family: var(--font-mono);
+  }
+
+  .code-window .code-block {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .routes {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .route-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .route-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+  }
+
+  .route-badge-local {
+    background: rgba(124, 58, 237, 0.15);
+    color: var(--color-accent);
+  }
+
+  .route-badge-mid {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-amber);
+  }
+
+  .route-badge-cloud {
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--color-cyan);
+  }
+
+  .route-path {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+  }
+
+  .route-step {
+    padding: 0.25rem 0.625rem;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .route-arrow {
+    color: var(--color-text-muted);
+  }
+
+  .highlight-local { color: var(--color-accent); border-color: rgba(124, 58, 237, 0.3); }
+  .highlight-mid { color: var(--color-amber); border-color: rgba(245, 158, 11, 0.3); }
+  .highlight-cloud { color: var(--color-cyan); border-color: rgba(6, 182, 212, 0.3); }
+
+  .route-desc {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .route-path {
+      font-size: 0.75rem;
+    }
+  }
+</style>

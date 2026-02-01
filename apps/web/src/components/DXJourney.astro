@@ -1,0 +1,194 @@
+---
+---
+
+<section class="section dx-journey">
+  <div class="container">
+    <p class="section-label">Developer Experience</p>
+    <h2 class="section-title">Progressive AI Integration</h2>
+    <p class="section-subtitle">
+      Start simple. Add capabilities as your product grows.
+    </p>
+
+    <div class="timeline">
+      <!-- Stage 1 -->
+      <div class="stage">
+        <div class="stage-marker">
+          <div class="stage-dot stage-dot-available"></div>
+          <div class="stage-line"></div>
+        </div>
+        <div class="stage-content">
+          <div class="stage-header">
+            <h3 class="stage-title">Pre-flight Check</h3>
+            <span class="stage-badge available">Available</span>
+          </div>
+          <p class="stage-desc">
+            Millisecond device capability detection. Know if local AI is worth it before loading any model.
+          </p>
+          <pre class="code-block stage-code"><code><span class="keyword">const</span> cap = <span class="keyword">await</span> <span class="function">checkCapability</span>();
+<span class="keyword">if</span> (cap.grade !== <span class="string">'unsupported'</span>) <span class="function">showLocalAIToggle</span>();</code></pre>
+        </div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="stage">
+        <div class="stage-marker">
+          <div class="stage-dot stage-dot-available"></div>
+          <div class="stage-line"></div>
+        </div>
+        <div class="stage-content">
+          <div class="stage-header">
+            <h3 class="stage-title">Instant Start &rarr; Silent Download &rarr; Hot Swap</h3>
+            <span class="stage-badge available">Available</span>
+          </div>
+          <p class="stage-desc">
+            Users get AI responses instantly via cloud. The model downloads silently in the background.
+            Once ready, inference seamlessly switches to local. Zero code change required.
+          </p>
+          <pre class="code-block stage-code"><code><span class="keyword">const</span> client = <span class="function">createClient</span>({'{'}
+  local: <span class="string">'auto'</span>,
+  cloud: {'{'} baseURL: <span class="string">'https://api.openai.com/v1'</span>, apiKey: <span class="string">'...'</span> {'}'},
+{'}'});
+
+<span class="comment">// Cloud responds instantly while model downloads in background</span>
+<span class="comment">// Once ready: seamless switch to local — zero code change</span></code></pre>
+        </div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="stage">
+        <div class="stage-marker">
+          <div class="stage-dot stage-dot-coming"></div>
+        </div>
+        <div class="stage-content">
+          <div class="stage-header">
+            <h3 class="stage-title">Privacy-First RAG</h3>
+            <span class="stage-badge coming">Coming Soon</span>
+          </div>
+          <p class="stage-desc">
+            User documents embedded and retrieved entirely in the browser.
+            Data never leaves the device.
+          </p>
+          <pre class="code-block stage-code"><code><span class="keyword">import</span> {'{'} ingest {'}'} <span class="keyword">from</span> <span class="string">'@webllm-io/rag'</span>;
+
+<span class="keyword">await</span> <span class="function">ingest</span>(userPDF);
+<span class="comment">// Embed locally, store in IndexedDB</span>
+<span class="comment">// Documents never leave the browser</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .dx-journey {
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .section-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
+  }
+
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .stage {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .stage-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 20px;
+  }
+
+  .stage-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  .stage-dot-available {
+    background: var(--color-green);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  }
+
+  .stage-dot-coming {
+    background: var(--color-text-muted);
+    border: 2px solid var(--color-text-muted);
+  }
+
+  .stage-line {
+    width: 2px;
+    flex: 1;
+    background: var(--color-border);
+    margin: 0.5rem 0;
+  }
+
+  .stage-content {
+    padding-bottom: 3rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .stage-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .stage-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .stage-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .stage-badge.available {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--color-green);
+  }
+
+  .stage-badge.coming {
+    background: rgba(85, 85, 85, 0.2);
+    color: var(--color-text-muted);
+  }
+
+  .stage-desc {
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .stage-code {
+    font-size: 0.8125rem;
+  }
+
+  @media (max-width: 768px) {
+    .stage-title {
+      font-size: 1rem;
+    }
+  }
+</style>
