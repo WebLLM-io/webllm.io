@@ -1,0 +1,145 @@
+---
+title: "Playground"
+description: "Try WebLLM.io in your browser with the interactive playground - test local and cloud inference"
+---
+
+# Playground
+
+The WebLLM.io Playground is an interactive demo application where you can test local and cloud inference capabilities in real-time.
+
+## Accessing the Playground
+
+### Online
+
+Visit the hosted playground at:
+
+```
+https://webllm.io/playground
+```
+
+### Local Development
+
+Run the playground locally:
+
+```bash
+# From the monorepo root
+pnpm --filter @webllm-io/playground dev
+```
+
+The playground will start at `http://localhost:5173`.
+
+:::note[COOP/COEP Headers Required]
+The playground requires Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers for `SharedArrayBuffer` support. These are automatically configured in the Vite development server.
+:::
+
+## Features
+
+### Device Capability Display
+
+When the playground loads, it automatically detects your device's WebGPU capability and displays:
+
+- **Device Grade** — S, A, B, or C based on estimated VRAM
+- **WebGPU Support** — Whether local inference is available
+- **Recommended Model** — Auto-selected model for your device tier
+
+### Mode Selection
+
+Choose how WebLLM.io routes your requests:
+
+- **Local** — Force local inference (requires WebGPU)
+- **Cloud** — Use cloud provider only
+- **Hybrid** — Smart routing based on device capability (default)
+
+### Settings Panel
+
+Click the **Settings** button to configure local and cloud options.
+
+#### Local Settings
+
+- **Model** — Override auto-selection with a specific model name
+  - Leave empty for automatic device-based selection
+  - Example: `Llama-3.1-8B-Instruct-q4f16_1-MLC`
+- **WebWorker** — Run inference in a Web Worker (default: **Enabled**)
+  - Keeps UI responsive during inference
+  - Recommended for production use
+- **Cache (OPFS)** — Enable model caching in Origin Private File System (default: **Enabled**)
+  - Dramatically improves load times on subsequent visits
+  - Models are cached locally and reused
+
+#### Cloud Settings
+
+- **Base URL** — Cloud API endpoint
+  - Example: `https://api.openai.com/v1`
+  - Compatible with OpenAI-style APIs
+- **API Key** — Authentication token
+  - Stored securely in `localStorage`
+  - Displayed as password-masked input
+- **Model** — Cloud model identifier
+  - Example: `gpt-4o-mini`, `gpt-4-turbo`
+- **Timeout** — Request timeout in milliseconds
+  - Default: 30000 (30 seconds)
+- **Retries** — Number of retry attempts on failure
+  - Default: 2
+
+### Settings Persistence
+
+All settings are automatically saved to `localStorage` under the key `webllm-playground-config` and restored when you reload the page.
+
+Click **Apply & Reinitialize** to apply changes and restart the client.
+
+### Model Tag
+
+Each assistant message displays the model that generated the response:
+
+- For local inference: `Llama-3.1-8B-Instruct-q4f16_1-MLC` (example)
+- For cloud inference: `gpt-4o-mini` (example)
+
+The model name is extracted from the first streaming chunk's `model` field and displayed as an italic tag below the message.
+
+## Chat Interface
+
+### Sending Messages
+
+Type your message in the input box and press **Send** or hit **Enter**.
+
+### Streaming Responses
+
+Responses stream in real-time, displaying tokens as they're generated.
+
+### Message History
+
+The playground maintains conversation context automatically. Previous messages are included in subsequent requests.
+
+### Clear Conversation
+
+Click **Clear** to reset the conversation and start fresh.
+
+## Browser Requirements
+
+- **Chrome 113+** or **Edge 113+** for local inference (WebGPU required)
+- Any modern browser for cloud-only mode
+
+## Troubleshooting
+
+### Local Inference Not Working
+
+1. **Check WebGPU Support** — Ensure your browser supports WebGPU
+2. **Verify MLC Dependency** — The playground includes `@mlc-ai/web-llm` by default
+3. **Check Console** — Look for detailed error messages in the browser console
+
+### Cloud Inference Failing
+
+1. **Verify API Key** — Ensure your API key is correct
+2. **Check Base URL** — Confirm the endpoint URL format
+3. **Network Issues** — Check browser network tab for CORS or connection errors
+
+### Slow Initial Load
+
+The first time you use local inference, the model needs to download (1-4 GB depending on device). Subsequent loads use the OPFS cache and are much faster.
+
+## Next Steps
+
+- [Quick Start](/getting-started/quick-start) — Integrate WebLLM.io into your app
+- [Configuration](/guides/configuration) — Advanced configuration options
+- [Local Inference](/guides/local-inference) — Learn about WebGPU models
+- [Examples](/examples/basic-chat) — More code examples

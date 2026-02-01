@@ -1,0 +1,63 @@
+---
+title: "Welcome to WebLLM.io"
+description: "The AI Runtime for Every Browser - Smart routing between local WebGPU and cloud inference"
+---
+
+# Welcome to WebLLM.io
+
+**The AI Runtime for Every Browser** — One unified API that intelligently routes between local WebGPU inference and cloud providers.
+
+## Why WebLLM.io?
+
+WebLLM.io brings AI inference directly to the browser with smart fallback capabilities. It automatically chooses the best execution strategy based on your user's device capabilities.
+
+### Key Features
+
+- **Smart Routing** — Automatically selects local or cloud inference based on device capability
+- **Zero Configuration** — Works out of the box with sensible defaults
+- **WebWorker Isolation** — Runs inference in Web Workers to keep your UI responsive
+- **OPFS Caching** — Efficient model storage using the Origin Private File System
+- **OpenAI Compatible** — Familiar API interface for seamless integration
+- **Progressive Enhancement** — Gracefully falls back to cloud when local inference isn't available
+
+## How It Works
+
+WebLLM.io scores your user's device (S/A/B/C grades based on VRAM) and automatically:
+
+- **High-end devices** — Run powerful models locally via WebGPU
+- **Mid-range devices** — Use lightweight models or cloud fallback
+- **Low-end devices** — Seamlessly route to cloud providers
+
+All with the same simple API call.
+
+## Quick Links
+
+- [Installation](/getting-started/installation) — Get started in 2 minutes
+- [Quick Start](/getting-started/quick-start) — Your first completion in 5 lines of code
+- [Playground](/getting-started/playground) — Try it live in your browser
+
+## Example
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto',
+  cloud: { baseURL: 'https://api.openai.com/v1', apiKey: 'sk-...' },
+});
+
+const result = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello, world!' }],
+});
+
+console.log(result.choices[0].message.content);
+```
+
+That's it. WebLLM.io handles device detection, model selection, WebWorker orchestration, and cloud fallback automatically.
+
+## Browser Support
+
+- **Local Inference** — Chrome 113+, Edge 113+ (WebGPU required)
+- **Cloud Mode** — All modern browsers
+
+Ready to get started? Head over to the [Installation Guide](/getting-started/installation).

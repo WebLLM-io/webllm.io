@@ -1,0 +1,377 @@
+---
+title: "FAQ"
+description: "Frequently asked questions about WebLLM.io"
+---
+
+## Browser Support
+
+### Which browsers support WebGPU?
+
+WebGPU is required for local inference. Supported browsers:
+
+- **Chrome/Edge 113+** (Windows, macOS, Linux, ChromeOS)
+- **Safari 18+** (macOS, iOS)
+
+You can check browser support at [caniuse.com/webgpu](https://caniuse.com/webgpu).
+
+:::tip
+For cloud-only mode, any modern browser works (no WebGPU required).
+:::
+
+### How do I enable WebGPU in my browser?
+
+WebGPU is enabled by default in supported versions. To verify:
+
+```typescript
+import { checkCapability } from '@webllm-io/sdk';
+
+const cap = await checkCapability();
+console.log('WebGPU available:', cap.webgpu);
+```
+
+If `false`, ensure you're using a supported browser version.
+
+---
+
+## Dependencies
+
+### Do I need @mlc-ai/web-llm for cloud-only mode?
+
+**No!** When using cloud-only mode, you don't need to install `@mlc-ai/web-llm`:
+
+```json
+{
+  "dependencies": {
+    "@webllm-io/sdk": "^1.0.0"
+    // No @mlc-ai/web-llm needed!
+  }
+}
+```
+
+Only install `@mlc-ai/web-llm` if you want local inference:
+
+```json
+{
+  "dependencies": {
+    "@webllm-io/sdk": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@mlc-ai/web-llm": "^0.2.x"
+  }
+}
+```
+
+---
+
+## Hardware Requirements
+
+### How much VRAM does my device need?
+
+WebLLM.io supports devices across all grades:
+
+| Grade | VRAM | Model Size | Minimum GPU |
+|-------|------|------------|-------------|
+| **S** | ≥32GB | Up to 8GB | RTX 4090, M3 Max |
+| **A** | ≥8GB | ~4.5GB | RTX 3060, M1 Pro |
+| **B** | ≥4GB | ~2.5GB | RTX 2060, M1 |
+| **C** | ≥2GB | ~1.5GB | Integrated GPUs |
+
+Even **Grade C** devices (entry-level GPUs) can run local inference using lightweight models like Qwen2.5-1.5B-Instruct.
+
+### How do I check my device's VRAM?
+
+```typescript
+import { checkCapability } from '@webllm-io/sdk';
+
+const cap = await checkCapability();
+console.log('Estimated VRAM:', cap.vramGB, 'GB');
+console.log('Device Grade:', cap.grade);
+```
+
+---
+
+## COOP/COEP Headers
+
+### Why do I need COOP/COEP headers?
+
+Local inference uses `SharedArrayBuffer` for performance, which requires Cross-Origin-Opener-Policy (COOP) and Cross-Origin-Embedder-Policy (COEP) headers.
+
+### How do I set COOP/COEP headers?
+
+**Vite:**
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [
+    {
+      name: 'coop-coep',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+          next();
+        });
+      }
+    }
+  ]
+});
+```
+
+**Next.js:**
+
+```javascript
+// next.config.js
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' }
+        ]
+      }
+    ];
+  }
+};
+```
+
+**Express:**
+
+```javascript
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+});
+```
+
+### What if I can't set COOP/COEP headers?
+
+Use cloud-only mode, which doesn't require `SharedArrayBuffer`:
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+---
+
+## Cloud Providers
+
+### Can I use a non-OpenAI cloud provider?
+
+**Yes!** Any OpenAI-compatible API works:
+
+**Anthropic Claude:**
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.anthropic.com/v1',
+    apiKey: 'sk-ant-...',
+    model: 'claude-3-5-sonnet-20241022'
+  }
+});
+```
+
+**Azure OpenAI:**
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT',
+    apiKey: 'YOUR_AZURE_KEY',
+    model: 'gpt-4'
+  }
+});
+```
+
+**Self-hosted (Ollama, LocalAI):**
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'http://localhost:11434/v1',
+    apiKey: 'not-required',
+    model: 'llama3.1'
+  }
+});
+```
+
+---
+
+## Model Downloads
+
+### How large are the model downloads?
+
+Model sizes vary by device grade:
+
+- **Grade S/A**: ~4.5GB (Llama-3.1-8B)
+- **Grade B**: ~2.5GB (Qwen2.5-3B)
+- **Grade C**: ~1.5GB (Qwen2.5-1.5B)
+
+Models are downloaded once and cached in OPFS (Origin Private File System) for future use.
+
+### How do I check if a model is cached?
+
+```typescript
+import { hasModelInCache } from '@webllm-io/sdk';
+
+const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+const isCached = await hasModelInCache(modelId);
+
+if (isCached) {
+  console.log('Model is cached, initialization will be fast!');
+} else {
+  console.log('Model will be downloaded (~4.5GB)');
+}
+```
+
+### Can I delete cached models?
+
+```typescript
+import { deleteModelFromCache } from '@webllm-io/sdk';
+
+const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+await deleteModelFromCache(modelId);
+console.log('Model removed from cache');
+```
+
+---
+
+## Privacy & Security
+
+### Is my data sent to the cloud in local mode?
+
+**No!** When using local-only mode, all inference happens on your device. No data is transmitted to external servers.
+
+```typescript
+// 100% local, zero network requests for inference
+const client = await createClient({
+  local: 'auto'
+});
+```
+
+### Where are models stored?
+
+Models are cached in **OPFS (Origin Private File System)**, a secure browser storage API:
+
+- Isolated per origin (domain)
+- Not accessible to other websites
+- Persists across sessions
+- Can be cleared via browser settings
+
+---
+
+## Performance
+
+### Why is first-time initialization slow?
+
+The first initialization downloads the model (1.5GB - 4.5GB). Subsequent initializations are fast because the model is cached.
+
+Show progress to users:
+
+```typescript
+const client = await createClient({
+  local: {
+    model: 'auto',
+    onProgress: (report) => {
+      console.log(`${report.text} - ${Math.round(report.progress * 100)}%`);
+    }
+  }
+});
+```
+
+### Does local inference run on the GPU?
+
+**Yes!** Local inference uses WebGPU to run on your GPU, providing hardware-accelerated performance.
+
+### Why does inference block my UI?
+
+By default, inference runs in a Web Worker to avoid blocking the main thread. If you disabled Web Workers:
+
+```typescript
+// DON'T do this unless debugging
+const client = await createClient({
+  local: mlc({
+    model: 'auto',
+    useWebWorker: false  // ❌ Blocks main thread
+  })
+});
+```
+
+Always keep Web Workers enabled for production:
+
+```typescript
+// ✅ Default: runs in Web Worker
+const client = await createClient({
+  local: 'auto'
+});
+```
+
+---
+
+## Troubleshooting
+
+### "Failed to create GPUAdapter" error
+
+This means WebGPU is not available. Possible causes:
+
+1. **Unsupported browser** — Use Chrome 113+, Edge 113+, or Safari 18+
+2. **GPU drivers outdated** — Update your graphics drivers
+3. **WebGPU disabled** — Check browser flags (should be enabled by default)
+
+**Solution:** Fall back to cloud mode:
+
+```typescript
+import { checkCapability, createClient } from '@webllm-io/sdk';
+
+const cap = await checkCapability();
+
+const client = await createClient({
+  local: cap.webgpu ? 'auto' : undefined,
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+### "SharedArrayBuffer is not defined" error
+
+COOP/COEP headers are not set. See [COOP/COEP Headers](#coopcoep-headers) section above.
+
+### Model download fails or times out
+
+1. **Check network connection** — Large downloads require stable internet
+2. **Check storage space** — Ensure sufficient disk space (5GB+ recommended)
+3. **Try a smaller model** — Use Grade C models if limited storage
+4. **Clear cache and retry** — Delete partial downloads
+
+```typescript
+import { deleteModelFromCache } from '@webllm-io/sdk';
+
+await deleteModelFromCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+// Retry initialization
+```
+
+---
+
+## Getting Help
+
+- **GitHub Issues**: [github.com/WebLLM-io/webllm.io](https://github.com/WebLLM-io/webllm.io/issues)
+- **X (Twitter)**: [@webllm_io](https://x.com/webllm_io)
+- **Documentation**: [webllm.io/docs](https://webllm.io/docs)
+
+For bug reports, include:
+- Browser version
+- Device grade (from `checkCapability()`)
+- Error messages and stack traces
+- Minimal reproduction code

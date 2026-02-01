@@ -1,0 +1,255 @@
+---
+title: "Hybrid Mode"
+description: "Combine local and cloud inference for automatic fallback and routing"
+---
+
+Hybrid mode gives you the best of both worlds: privacy and performance with local inference, with automatic fallback to cloud when needed.
+
+## Basic Hybrid Setup
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = await createClient({
+  // Local configuration
+  local: {
+    model: 'auto',  // Auto-select based on device
+    onProgress: (report) => {
+      console.log(`Loading: ${report.text}`);
+    }
+  },
+
+  // Cloud fallback
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// Automatically uses local if available, falls back to cloud if needed
+const response = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'What is machine learning?' }
+  ]
+});
+
+console.log('Model used:', response.model);
+console.log('Response:', response.choices[0].message.content);
+```
+
+## How Routing Works
+
+WebLLM.io automatically decides between local and cloud based on:
+
+1. **Device capability** — If WebGPU is not available, route to cloud
+2. **Model availability** — If requested model is not available locally, route to cloud
+3. **Request parameters** — Some parameters may only be supported by cloud
+4. **User preferences** — Explicit provider selection overrides auto-routing
+
+## Explicit Provider Selection
+
+You can force a specific provider for any request:
+
+```typescript
+// Force local inference
+const localResponse = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  provider: 'local'  // Use local MLC engine
+});
+
+// Force cloud inference
+const cloudResponse = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  provider: 'cloud'  // Use cloud API
+});
+```
+
+## Graceful Degradation
+
+Handle scenarios where local is not available:
+
+```typescript
+import { createClient, checkCapability } from '@webllm-io/sdk';
+
+const capability = await checkCapability();
+
+const client = await createClient({
+  local: capability.webgpu ? 'auto' : undefined,
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+if (!capability.webgpu) {
+  console.warn('WebGPU not available, using cloud-only mode');
+}
+
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Explain neural networks.' }]
+});
+```
+
+## Routing Based on Request Complexity
+
+Route simple queries locally, complex ones to cloud:
+
+```typescript
+async function chat(userMessage: string) {
+  const isComplexQuery = userMessage.length > 500 ||
+                         userMessage.includes('code') ||
+                         userMessage.includes('analyze');
+
+  return await client.chat.completions.create({
+    messages: [
+      { role: 'user', content: userMessage }
+    ],
+    provider: isComplexQuery ? 'cloud' : 'local'
+  });
+}
+```
+
+## Streaming with Hybrid Mode
+
+Streaming works seamlessly with both providers:
+
+```typescript
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a short story.' }],
+  stream: true
+  // No provider specified = auto-route
+});
+
+console.log('Streaming from provider...');
+
+for await (const chunk of stream) {
+  // First chunk tells you which provider is being used
+  if (chunk.choices[0]?.delta?.role) {
+    console.log('Using model:', chunk.model);
+  }
+
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) {
+    process.stdout.write(delta);
+  }
+}
+```
+
+## Cost Optimization Strategy
+
+Use local for frequent queries, cloud for high-quality needs:
+
+```typescript
+const client = await createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// Free local inference for drafts
+const draft = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Draft an email about project status.' }
+  ],
+  provider: 'local'
+});
+
+// High-quality cloud model for final version
+const final = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Polish this email:\n\n' + draft.choices[0].message.content }
+  ],
+  provider: 'cloud',
+  temperature: 0.3
+});
+```
+
+## Monitoring Provider Usage
+
+Track which provider is being used:
+
+```typescript
+let localRequests = 0;
+let cloudRequests = 0;
+
+async function monitoredChat(messages: Message[]) {
+  const response = await client.chat.completions.create({ messages });
+
+  // Check which model was used
+  if (response.model.includes('MLC')) {
+    localRequests++;
+    console.log('Local request #', localRequests);
+  } else {
+    cloudRequests++;
+    console.log('Cloud request #', cloudRequests);
+  }
+
+  return response;
+}
+
+// After some usage
+console.log(`Local: ${localRequests}, Cloud: ${cloudRequests}`);
+console.log(`Cost savings: ${localRequests * 0.001}$ (approx)`);
+```
+
+## Advanced: Custom Routing Logic
+
+Implement custom routing with provider composition:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+
+// Custom wrapper with intelligent routing
+function smartRouter(localProvider, cloudProvider) {
+  return async (request) => {
+    // Route long contexts to cloud (better quality)
+    const totalTokens = request.messages.reduce(
+      (sum, msg) => sum + msg.content.length / 4,
+      0
+    );
+
+    if (totalTokens > 2000) {
+      console.log('Long context detected, using cloud');
+      return cloudProvider(request);
+    }
+
+    // Route local by default
+    try {
+      return await localProvider(request);
+    } catch (error) {
+      console.warn('Local failed, falling back to cloud:', error);
+      return cloudProvider(request);
+    }
+  };
+}
+
+const client = await createClient({
+  local: mlc({ model: 'auto' }),
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  })
+});
+```
+
+## Hybrid Mode Benefits
+
+- ✅ **Privacy when possible** — Use local for sensitive data
+- ✅ **Reliability** — Cloud fallback ensures availability
+- ✅ **Cost efficiency** — Reduce cloud API costs with local inference
+- ✅ **Performance** — Local is faster (no network latency)
+- ✅ **Flexibility** — Choose the best provider per request
+
+## Next Steps
+
+- [Device Detection](/examples/device-detection) — Detect capabilities to optimize routing
+- [Custom Providers](/guides/custom-providers) — Build advanced routing logic
+- [Cache Management](/guides/cache-management) — Optimize local model storage

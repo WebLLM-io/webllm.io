@@ -1,0 +1,201 @@
+---
+title: "Cloud-Only Mode"
+description: "Use WebLLM.io with cloud providers without any local dependencies"
+---
+
+Cloud-only mode lets you use WebLLM.io's unified API with cloud providers like OpenAI, without installing the local inference engine (`@mlc-ai/web-llm`).
+
+## Basic Cloud Setup
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: 'sk-...',
+    model: 'gpt-4o-mini'
+  }
+});
+
+const response = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Explain quantum computing in simple terms.' }
+  ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+## No Local Dependencies Required
+
+When using cloud-only mode, you **do not need** to install `@mlc-ai/web-llm`:
+
+```json
+{
+  "dependencies": {
+    "@webllm-io/sdk": "^1.0.0"
+    // @mlc-ai/web-llm NOT needed for cloud-only
+  }
+}
+```
+
+The SDK has zero external dependencies for cloud mode — even Server-Sent Events (SSE) parsing is implemented internally.
+
+## Streaming Responses
+
+Cloud streaming works identically to local streaming:
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+const stream = await client.chat.completions.create({
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Write a haiku about coding.' }
+  ],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) {
+    process.stdout.write(delta);
+  }
+}
+```
+
+## Cloud Configuration Options
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: 'sk-...',
+    model: 'gpt-4o-mini',
+
+    // Optional: Request timeout (default: 60000ms)
+    timeout: 30000,
+
+    // Optional: Retry attempts (default: 2)
+    retries: 3,
+
+    // Optional: Custom headers
+    headers: {
+      'X-Custom-Header': 'value'
+    }
+  }
+});
+```
+
+## Using Alternative Cloud Providers
+
+Any OpenAI-compatible API works:
+
+### Anthropic Claude (via OpenAI SDK compatibility)
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.anthropic.com/v1',
+    apiKey: 'sk-ant-...',
+    model: 'claude-3-5-sonnet-20241022',
+    headers: {
+      'anthropic-version': '2023-06-01'
+    }
+  }
+});
+```
+
+### Azure OpenAI
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT',
+    apiKey: 'YOUR_AZURE_KEY',
+    model: 'gpt-4',
+    headers: {
+      'api-key': 'YOUR_AZURE_KEY'
+    }
+  }
+});
+```
+
+### Self-Hosted (Ollama, LocalAI, etc.)
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'http://localhost:11434/v1',  // Ollama
+    apiKey: 'not-required',  // Some local servers don't need keys
+    model: 'llama3.1'
+  }
+});
+```
+
+## Environment Variables (Recommended)
+
+Store sensitive keys in environment variables:
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: import.meta.env.VITE_OPENAI_BASE_URL,
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+```bash
+# .env.local
+VITE_OPENAI_BASE_URL=https://api.openai.com/v1
+VITE_OPENAI_API_KEY=sk-...
+```
+
+:::danger
+Never commit API keys to version control. Use environment variables or secure key management.
+:::
+
+## Error Handling
+
+```typescript
+try {
+  const response = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello!' }]
+  });
+} catch (error) {
+  if (error.message.includes('401')) {
+    console.error('Invalid API key');
+  } else if (error.message.includes('timeout')) {
+    console.error('Request timed out');
+  } else {
+    console.error('Request failed:', error);
+  }
+}
+```
+
+## Cloud-Only Use Cases
+
+Cloud-only mode is ideal when:
+
+- ✅ You need access to the latest frontier models (GPT-4, Claude, etc.)
+- ✅ User devices don't support WebGPU
+- ✅ You want to minimize bundle size (no local inference engine)
+- ✅ Your application already has cloud API infrastructure
+- ✅ You need guaranteed consistency across all devices
+
+## Next Steps
+
+- [Hybrid Mode](/examples/hybrid-mode) — Combine local and cloud for automatic fallback
+- [Custom Providers](/guides/custom-providers) — Implement custom cloud logic
+- [API Reference](/api/create-client) — Full configuration options

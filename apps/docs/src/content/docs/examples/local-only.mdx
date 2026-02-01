@@ -1,0 +1,166 @@
+---
+title: "Local-Only Mode"
+description: "Run AI inference entirely in the browser with no cloud dependencies"
+---
+
+Local-only mode ensures complete privacy by running all inference on the user's device. No data is ever sent to external servers.
+
+## Basic Local-Only Setup
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = await createClient({
+  local: 'auto'  // No cloud configuration
+});
+
+const response = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'What is the capital of France?' }
+  ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+## Showing Model Download Progress
+
+When a model is loaded for the first time, it needs to be downloaded. Display progress to users:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+// Create progress UI elements
+const progressBar = document.getElementById('progress-bar');
+const statusText = document.getElementById('status-text');
+
+const client = await createClient({
+  local: {
+    model: 'auto',  // Auto-select based on device
+    onProgress: (report) => {
+      // Update progress UI
+      const percent = Math.round(report.progress * 100);
+      progressBar.style.width = `${percent}%`;
+      statusText.textContent = report.text;
+
+      console.log(`${report.text} - ${percent}%`);
+    }
+  }
+});
+
+// Hide progress UI once loaded
+progressBar.parentElement.style.display = 'none';
+
+// Client is now ready to use
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+```
+
+## Progress Report Structure
+
+The `onProgress` callback receives reports with the following structure:
+
+```typescript
+{
+  progress: 0.75,      // 0.0 to 1.0
+  text: "Loading model weights...",
+  // Additional fields may vary by stage
+}
+```
+
+## Explicit Model Selection
+
+Instead of `'auto'`, you can specify an exact model:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+
+const client = await createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    onProgress: (report) => {
+      console.log(report.text, `${Math.round(report.progress * 100)}%`);
+    }
+  })
+});
+```
+
+## Disable Web Worker (Advanced)
+
+By default, inference runs in a Web Worker. You can disable this for debugging:
+
+```typescript
+const client = await createClient({
+  local: mlc({
+    model: 'auto',
+    useWebWorker: false  // Run in main thread (may block UI)
+  })
+});
+```
+
+:::caution
+Running inference in the main thread can freeze the UI during generation. Only disable Web Workers for debugging purposes.
+:::
+
+## Check Model Cache Before Initialization
+
+Avoid unnecessary downloads by checking if a model is already cached:
+
+```typescript
+import { hasModelInCache } from '@webllm-io/sdk';
+
+const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+
+if (await hasModelInCache(modelId)) {
+  console.log('Model is cached, initialization will be fast!');
+} else {
+  console.log('Model needs to be downloaded (~4.5GB)');
+  // Show warning to user
+}
+
+const client = await createClient({
+  local: { model: modelId }
+});
+```
+
+## Disable OPFS Caching (Testing Only)
+
+For testing, you can disable persistent caching:
+
+```typescript
+const client = await createClient({
+  local: mlc({
+    model: 'auto',
+    useCache: false  // Don't cache in OPFS
+  })
+});
+```
+
+:::warning
+Disabling cache means the model will be downloaded on every page refresh. Only use this for testing.
+:::
+
+## Privacy Benefits
+
+Local-only mode provides:
+
+- ✅ **Zero data transmission** — All processing happens on-device
+- ✅ **No API keys required** — No authentication needed
+- ✅ **Offline capable** — Works without internet (after initial download)
+- ✅ **Full control** — You own the inference pipeline
+- ✅ **No usage limits** — No rate limiting or quotas
+
+## Requirements
+
+- **WebGPU support** — Chrome 113+, Edge 113+, or compatible browser
+- **Sufficient VRAM** — At least 2GB (Grade C devices supported)
+- **Storage space** — 1.5GB to 8GB depending on model
+- **COOP/COEP headers** — Required for SharedArrayBuffer (see [FAQ](/faq))
+
+## Next Steps
+
+- [Device Detection](/examples/device-detection) — Check capabilities before loading
+- [Cache Management](/guides/cache-management) — Manage downloaded models
+- [Hybrid Mode](/examples/hybrid-mode) — Combine local and cloud for best of both worlds

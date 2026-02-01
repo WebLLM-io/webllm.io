@@ -1,0 +1,105 @@
+---
+title: Errors
+description: WebLLMError class and error code reference.
+---
+
+All errors thrown by the SDK are instances of `WebLLMError`, which extends the native `Error` class with a typed error code.
+
+## WebLLMError
+
+```ts
+class WebLLMError extends Error {
+  code: WebLLMErrorCode;
+  cause?: unknown;
+
+  constructor(code: WebLLMErrorCode, message: string, cause?: unknown);
+}
+```
+
+### Properties
+
+| Property | Type | Description |
+|---|---|---|
+| `code` | `WebLLMErrorCode` | Machine-readable error category |
+| `message` | `string` | Human-readable error description |
+| `cause` | `unknown` | Original error that caused this error (if any) |
+| `name` | `string` | Always `'WebLLMError'` |
+
+## Error Codes
+
+```ts
+type WebLLMErrorCode =
+  | 'WEBGPU_NOT_AVAILABLE'
+  | 'MODEL_LOAD_FAILED'
+  | 'INFERENCE_FAILED'
+  | 'CLOUD_REQUEST_FAILED'
+  | 'NO_PROVIDER_AVAILABLE'
+  | 'ABORTED'
+  | 'TIMEOUT'
+  | 'QUEUE_FULL';
+```
+
+### Reference
+
+| Code | When | Recoverable? |
+|---|---|---|
+| `WEBGPU_NOT_AVAILABLE` | Browser does not support WebGPU or no adapter found | Use cloud fallback |
+| `MODEL_LOAD_FAILED` | Model download, compilation, or initialization failed | Retry or use cloud |
+| `INFERENCE_FAILED` | Local inference produced an error during generation | SDK auto-falls back to cloud if configured |
+| `CLOUD_REQUEST_FAILED` | Cloud API returned an error or network failure | Check API key, URL, connectivity |
+| `NO_PROVIDER_AVAILABLE` | Neither local nor cloud backend is configured or usable | Configure at least one provider |
+| `ABORTED` | Request was cancelled via `AbortSignal` | Intentional — no fallback attempted |
+| `TIMEOUT` | Cloud request exceeded the configured timeout | Increase timeout or retry |
+| `QUEUE_FULL` | Local inference queue is at capacity | Wait and retry |
+
+## Error Handling
+
+### Basic
+
+```ts
+import { WebLLMError } from '@webllm-io/sdk';
+
+try {
+  const res = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello' }],
+  });
+} catch (err) {
+  if (err instanceof WebLLMError) {
+    switch (err.code) {
+      case 'ABORTED':
+        // User cancelled — ignore
+        break;
+      case 'NO_PROVIDER_AVAILABLE':
+        showSetupInstructions();
+        break;
+      default:
+        showErrorToast(err.message);
+    }
+  }
+}
+```
+
+### Checking the Cause
+
+The `cause` property preserves the original error for debugging:
+
+```ts
+try {
+  await client.chat.completions.create({ ... });
+} catch (err) {
+  if (err instanceof WebLLMError && err.code === 'CLOUD_REQUEST_FAILED') {
+    console.error('Cloud error:', err.message);
+    console.error('Original error:', err.cause);
+  }
+}
+```
+
+## Automatic Fallback
+
+The SDK automatically handles some error scenarios:
+
+- **Local inference fails** → falls back to cloud (if configured)
+- **Cloud fails** → falls back to local (if loaded and ready)
+- **Request aborted** → no fallback (intentional cancellation)
+
+This means many errors are handled transparently. You only see errors when all fallback options are exhausted.

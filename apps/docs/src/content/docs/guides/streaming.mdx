@@ -1,0 +1,332 @@
+---
+title: "Streaming"
+description: "Stream responses token-by-token for real-time user experiences"
+---
+
+Streaming enables real-time token-by-token responses, providing immediate feedback and a better user experience for long-form content generation. WebLLM.io supports streaming for both local and cloud inference with identical APIs.
+
+## Basic Streaming
+
+Enable streaming by setting `stream: true`:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+const stream = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Write a short story about AI' }
+  ],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) {
+    process.stdout.write(content);  // Print tokens as they arrive
+  }
+}
+```
+
+## Chunk Structure
+
+Each chunk follows the OpenAI Chat Completion Chunk format:
+
+```typescript
+interface ChatCompletionChunk {
+  id: string;
+  object: 'chat.completion.chunk';
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    delta: {
+      role?: 'assistant';
+      content?: string;
+    };
+    finish_reason: string | null;
+  }>;
+}
+```
+
+Key fields:
+
+- **`chunk.choices[0].delta.content`** — The new token(s) generated
+- **`chunk.choices[0].delta.role`** — Role (only in the first chunk)
+- **`chunk.choices[0].finish_reason`** — Why generation stopped (`'stop'`, `'length'`, or `null`)
+- **`chunk.model`** — Model identifier (useful for detecting which backend responded)
+
+## Building the Full Response
+
+Accumulate chunks to construct the complete message:
+
+```typescript
+const stream = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Explain quantum entanglement' }
+  ],
+  stream: true
+});
+
+let fullContent = '';
+
+for await (const chunk of stream) {
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) {
+    fullContent += delta;
+    console.log('Current content:', fullContent);
+  }
+
+  const finishReason = chunk.choices[0]?.finish_reason;
+  if (finishReason) {
+    console.log('Generation finished:', finishReason);
+  }
+}
+
+console.log('Final response:', fullContent);
+```
+
+## Streaming to UI
+
+Update a React component in real-time:
+
+```typescript
+import { useState } from 'react';
+import { createClient } from '@webllm-io/sdk';
+
+function ChatInterface() {
+  const [messages, setMessages] = useState([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const client = createClient({
+    local: 'auto',
+    cloud: {
+      baseURL: 'https://api.openai.com/v1',
+      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      model: 'gpt-4o-mini'
+    }
+  });
+
+  async function sendMessage(content) {
+    setIsStreaming(true);
+
+    // Add user message
+    const userMessage = { role: 'user', content };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Stream assistant response
+    const stream = await client.chat.completions.create({
+      messages: [...messages, userMessage],
+      stream: true
+    });
+
+    let assistantContent = '';
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (delta) {
+        assistantContent += delta;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1].content = assistantContent;
+          return updated;
+        });
+      }
+    }
+
+    setIsStreaming(false);
+  }
+
+  return (
+    <div>
+      {messages.map((msg, i) => (
+        <div key={i} className={msg.role}>
+          {msg.content}
+        </div>
+      ))}
+      <button onClick={() => sendMessage('Hello!')} disabled={isStreaming}>
+        Send
+      </button>
+    </div>
+  );
+}
+```
+
+## Detecting the Backend
+
+Check which backend is streaming responses:
+
+```typescript
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  // Model name appears in the first chunk
+  if (chunk.model) {
+    console.log('Streaming from:', chunk.model);
+  }
+
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) {
+    process.stdout.write(content);
+  }
+}
+```
+
+Local models include `'MLC'` in the name (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`), while cloud models use the configured model ID (e.g., `'gpt-4o-mini'`).
+
+## Error Handling
+
+Handle errors during streaming:
+
+```typescript
+try {
+  const stream = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello!' }],
+    stream: true
+  });
+
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content;
+    if (content) {
+      process.stdout.write(content);
+    }
+  }
+} catch (error) {
+  console.error('Streaming failed:', error.message);
+  // Fall back to non-streaming or show error to user
+}
+```
+
+## Aborting Streaming
+
+Cancel a streaming request mid-generation:
+
+```typescript
+const controller = new AbortController();
+
+const stream = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a long essay' }],
+  stream: true,
+  signal: controller.signal
+});
+
+// Start consuming stream
+(async () => {
+  try {
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        process.stdout.write(content);
+      }
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('\nStream aborted by user');
+    }
+  }
+})();
+
+// Abort after 2 seconds
+setTimeout(() => {
+  controller.abort();
+}, 2000);
+```
+
+See the [Abort Requests](/guides/abort-requests) guide for more details.
+
+## Streaming vs. Non-Streaming
+
+**Use streaming when:**
+- Building conversational UIs (chatbots, assistants)
+- Generating long-form content (essays, articles, code)
+- User experience benefits from seeing incremental progress
+
+**Use non-streaming when:**
+- Processing responses programmatically (extracting JSON, parsing structured data)
+- Responses are short and fast
+- Simpler code is preferred
+
+Example of non-streaming:
+
+```typescript
+const completion = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'What is 2+2?' }],
+  stream: false  // default
+});
+
+console.log(completion.choices[0].message.content);  // '4'
+```
+
+## Streaming with Other Parameters
+
+Combine streaming with other request parameters:
+
+```typescript
+const stream = await client.chat.completions.create({
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Explain neural networks' }
+  ],
+  stream: true,
+  temperature: 0.7,
+  max_tokens: 500,
+  provider: 'local'  // Force local streaming
+});
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) {
+    process.stdout.write(content);
+  }
+}
+```
+
+## Local vs. Cloud Streaming
+
+Streaming works identically for both backends:
+
+```typescript
+// Hybrid client
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// Local streaming (if model loaded)
+const localStream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
+  provider: 'local'
+});
+
+// Cloud streaming
+const cloudStream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
+  provider: 'cloud'
+});
+
+// Both streams have identical chunk structure and API
+```
+
+## Next Steps
+
+- Learn about [Abort Requests](/guides/abort-requests) to cancel streaming
+- Explore [Hybrid Routing](/guides/hybrid-routing) for automatic backend selection
+- See [Structured Output](/guides/structured-output) for JSON responses

@@ -1,0 +1,132 @@
+---
+title: Custom Providers
+description: Use mlc() and fetchSSE() provider factories, or write your own.
+---
+
+WebLLM SDK uses a provider system to abstract inference backends. You can use the built-in `mlc()` and `fetchSSE()` factories, or provide a completely custom function.
+
+## Built-in Providers
+
+### mlc() — Local Provider
+
+The `mlc()` function creates a local inference provider using the MLC engine:
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+
+const client = createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWebWorker: true,
+    useCache: true,
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    },
+  }),
+});
+```
+
+#### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `model` | `string` | — | Fixed model ID. Overrides tier selection. |
+| `tiers` | `TiersConfig` | — | Model per device grade (high/medium/low) |
+| `useCache` | `boolean` | `true` | Enable OPFS model caching |
+| `useWebWorker` | `boolean` | `true` | Run in Web Worker |
+
+### fetchSSE() — Cloud Provider
+
+The `fetchSSE()` function creates a cloud inference provider using SSE streaming:
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+
+const client = createClient({
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: 'sk-...',
+    model: 'gpt-4o-mini',
+    timeout: 30000,
+    retries: 2,
+  }),
+});
+```
+
+You can also pass just a URL string:
+
+```ts
+const client = createClient({
+  cloud: fetchSSE('https://api.openai.com/v1'),
+});
+```
+
+#### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `baseURL` | `string` | — | API endpoint URL (required) |
+| `apiKey` | `string` | — | Authorization bearer token |
+| `model` | `string` | — | Model identifier |
+| `headers` | `Record<string, string>` | — | Additional request headers |
+| `timeout` | `number` | — | Request timeout in milliseconds |
+| `retries` | `number` | — | Number of retry attempts |
+
+## Custom Cloud Function
+
+For full control, pass a function as the `cloud` config. It receives messages and a route context, and must return either a `ChatCompletion` or an `AsyncIterable<ChatCompletionChunk>`:
+
+```ts
+import type { CloudFn } from '@webllm-io/sdk';
+
+const myProvider: CloudFn = async (messages, context) => {
+  const response = await fetch('https://my-api.example.com/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+
+  return response.json();
+};
+
+const client = createClient({
+  cloud: myProvider,
+});
+```
+
+### CloudFn Type
+
+```ts
+type CloudFn = (
+  messages: Message[],
+  context: RouteContext,
+) => Promise<ChatCompletion> | AsyncIterable<ChatCompletionChunk>;
+```
+
+## Config vs Explicit Provider
+
+There are two ways to configure each backend:
+
+**Plain config** — the SDK wraps it into the default provider automatically:
+
+```ts
+createClient({
+  local: 'auto',
+  cloud: { baseURL: '...', apiKey: '...' },
+});
+```
+
+**Explicit provider** — you call the factory yourself for more control:
+
+```ts
+createClient({
+  local: mlc({ useWebWorker: false }),
+  cloud: fetchSSE({ baseURL: '...', retries: 5 }),
+});
+```
+
+Both approaches produce the same result. Use explicit providers when you need options that aren't exposed in the plain config shorthand.

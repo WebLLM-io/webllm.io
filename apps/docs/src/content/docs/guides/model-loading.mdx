@@ -1,0 +1,135 @@
+---
+title: Model Loading
+description: Progressive model loading, OPFS caching, and load state management.
+---
+
+WebLLM SDK handles model downloading, compilation, and caching automatically. This guide covers the loading lifecycle and how to monitor or customize it.
+
+## Progressive Loading
+
+When both `local` and `cloud` are configured, the SDK uses a progressive loading strategy:
+
+1. **Cloud responds immediately** — no waiting for model download
+2. **Local model downloads in background** — via the MLC engine
+3. **Hot-switch to local** — once the model is ready, subsequent requests use local inference
+
+This happens transparently. Your code stays the same:
+
+```ts
+const client = createClient({
+  local: 'auto',
+  cloud: { baseURL: 'https://api.example.com/v1' },
+});
+
+// First call → cloud (instant)
+// After model loads → local (automatic)
+const res = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+## Monitoring Progress
+
+Use the `onProgress` callback to track download, compilation, and warmup stages:
+
+```ts
+const client = createClient({
+  local: 'auto',
+  cloud: { baseURL: 'https://api.example.com/v1' },
+  onProgress(progress) {
+    console.log(`[${progress.stage}] ${progress.model}: ${(progress.progress * 100).toFixed(1)}%`);
+    if (progress.bytesLoaded && progress.bytesTotal) {
+      const mb = (progress.bytesLoaded / 1024 / 1024).toFixed(1);
+      const total = (progress.bytesTotal / 1024 / 1024).toFixed(1);
+      console.log(`  ${mb} MB / ${total} MB`);
+    }
+  },
+});
+```
+
+### LoadProgress Interface
+
+```ts
+interface LoadProgress {
+  stage: 'download' | 'compile' | 'warmup';
+  progress: number;       // 0 to 1
+  model: string;          // Model ID
+  bytesLoaded?: number;   // Bytes downloaded so far
+  bytesTotal?: number;    // Total bytes to download
+}
+```
+
+### Load States
+
+Each model goes through these states:
+
+| Status | Description |
+|---|---|
+| `idle` | Not started |
+| `downloading` | Fetching model weights |
+| `compiling` | Compiling model for WebGPU |
+| `ready` | Model loaded and ready for inference |
+| `error` | Loading failed |
+
+## OPFS Caching
+
+By default, models are cached in the browser's [Origin Private File System](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) (OPFS). Unlike HTTP cache or localStorage, OPFS is:
+
+- **Persistent** — not cleared by "Clear browsing data"
+- **Large capacity** — can store multi-GB model files
+- **Per-origin** — isolated to your domain
+
+### Check Cache Status
+
+```ts
+import { hasModelInCache } from '@webllm-io/sdk';
+
+const cached = await hasModelInCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+if (cached) {
+  console.log('Model is cached — loading will be fast');
+}
+```
+
+### Delete Cached Models
+
+```ts
+import { deleteModelFromCache } from '@webllm-io/sdk';
+
+await deleteModelFromCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+```
+
+### Disable Caching
+
+```ts
+const client = createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: false,  // Always re-download
+  },
+});
+```
+
+## Model Selection by Device Tier
+
+When `local: 'auto'`, the SDK selects a model based on the device grade:
+
+| Grade | VRAM | Default Model |
+|---|---|---|
+| S | ≥8 GB | Large model (8B+) |
+| A | ≥4 GB | 8B quantized model |
+| B | ≥2 GB | Small model (3B or less) |
+| C | &lt;2 GB | Lightweight model (Qwen2.5-1.5B) |
+
+Override with explicit tiers:
+
+```ts
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    },
+  },
+});
+```

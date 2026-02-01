@@ -1,0 +1,117 @@
+---
+title: Device Capability
+description: Detect device capabilities and adapt your UI before loading any models.
+---
+
+The `checkCapability()` function probes the device's hardware in milliseconds, letting you make UI decisions before loading any models.
+
+## Basic Usage
+
+```ts
+import { checkCapability } from '@webllm-io/sdk';
+
+const report = await checkCapability();
+
+if (report.webgpu && report.grade !== 'C') {
+  showLocalAIToggle();
+} else {
+  showCloudOnlyBadge();
+}
+```
+
+## CapabilityReport
+
+`checkCapability()` returns a `CapabilityReport` with these fields:
+
+```ts
+interface CapabilityReport {
+  webgpu: boolean;          // WebGPU API available
+  gpu: GpuInfo | null;      // GPU vendor, name, estimated VRAM
+  grade: DeviceGrade;       // 'S' | 'A' | 'B' | 'C'
+  connection: ConnectionInfo;
+  battery: BatteryInfo | null;
+  memory: number;           // navigator.deviceMemory (GB), 0 if unavailable
+}
+```
+
+### GpuInfo
+
+```ts
+interface GpuInfo {
+  vendor: string;  // e.g. 'nvidia', 'apple', 'intel'
+  name: string;    // GPU adapter name
+  vram: number;    // Estimated VRAM in MB
+}
+```
+
+### ConnectionInfo
+
+```ts
+interface ConnectionInfo {
+  type: string;     // 'wifi', '4g', 'unknown', etc.
+  downlink: number; // Estimated bandwidth in Mbps
+  saveData: boolean; // Data saver mode
+}
+```
+
+### BatteryInfo
+
+```ts
+interface BatteryInfo {
+  level: number;    // 0 to 1
+  charging: boolean;
+}
+```
+
+## Device Grades
+
+The grade is based on estimated VRAM:
+
+| Grade | VRAM Threshold | Typical Device |
+|---|---|---|
+| **S** | ≥8192 MB | Desktop with dedicated GPU (RTX 3060+, M1 Pro+) |
+| **A** | ≥4096 MB | Gaming laptop, M1 MacBook |
+| **B** | ≥2048 MB | Integrated GPU, mid-range mobile |
+| **C** | &lt;2048 MB | Low-end mobile, older hardware |
+
+All grades support local inference — grade C uses a lightweight model (Qwen2.5-1.5B).
+
+## Conditional Features
+
+Use the report to progressively enable features:
+
+```ts
+const report = await checkCapability();
+
+// Only offer local AI on capable devices
+if (!report.webgpu) {
+  config.local = false;
+}
+
+// Warn on metered connections
+if (report.connection.saveData || report.connection.downlink < 2) {
+  showDataWarning();
+}
+
+// Skip local on low battery
+if (report.battery && report.battery.level < 0.2 && !report.battery.charging) {
+  config.local = false;
+}
+```
+
+## Pre-flight Pattern
+
+Check capabilities before creating the client:
+
+```ts
+import { checkCapability, createClient } from '@webllm-io/sdk';
+
+const cap = await checkCapability();
+
+const client = createClient({
+  local: cap.webgpu ? 'auto' : false,
+  cloud: { baseURL: 'https://api.example.com/v1' },
+});
+```
+
+This avoids unnecessary WebGPU initialization on unsupported devices.

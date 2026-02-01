@@ -1,0 +1,54 @@
+---
+title: "Basic Chat"
+description: "A simple chat example using WebLLM.io with automatic local inference"
+---
+
+This example demonstrates the simplest way to get started with WebLLM.io. The client will automatically detect your device capabilities and select an appropriate local model.
+
+## Complete Example
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+// Create a client with automatic local model selection
+const client = await createClient({
+  local: 'auto'
+});
+
+// Send a chat message
+const response = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'What is WebGPU?' }
+  ]
+});
+
+// Log the response
+console.log(response.choices[0].message.content);
+```
+
+## How It Works
+
+1. **Client Creation**: `createClient({ local: 'auto' })` automatically:
+   - Detects your device's WebGPU capabilities
+   - Assigns a device grade (S/A/B/C)
+   - Selects an appropriate model based on available VRAM
+   - Downloads and caches the model in OPFS (if not already cached)
+
+2. **Inference**: The `chat.completions.create()` call runs entirely in your browser using WebGPU. No data is sent to external servers.
+
+3. **Response**: You receive a complete response object following the OpenAI Chat Completions API format.
+
+## Device Grades and Model Selection
+
+WebLLM.io automatically selects models based on your device grade:
+
+- **Grade S** (≥32GB VRAM): High-performance models
+- **Grade A** (≥8GB VRAM): Standard models like Llama-3.1-8B
+- **Grade B** (≥4GB VRAM): Optimized models
+- **Grade C** (&lt;4GB VRAM): Lightweight models like Qwen2.5-1.5B
+
+## Next Steps
+
+- [Streaming Chat](/examples/streaming-chat) — Stream responses token by token
+- [Loading Progress](/examples/local-only) — Display model download progress
+- [Device Detection](/examples/device-detection) — Check device capabilities before initialization

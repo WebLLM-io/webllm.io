@@ -1,0 +1,130 @@
+---
+title: "Streaming Chat"
+description: "Stream chat responses token by token for real-time user experience"
+---
+
+Streaming responses provides a better user experience by displaying content as it's generated, rather than waiting for the complete response.
+
+## Complete Example
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = await createClient({
+  local: 'auto'
+});
+
+// Enable streaming with stream: true
+const stream = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Explain how WebGPU enables in-browser AI inference.' }
+  ],
+  stream: true
+});
+
+// Process each chunk as it arrives
+for await (const chunk of stream) {
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) {
+    // Display the token immediately (e.g., append to UI)
+    process.stdout.write(delta);
+  }
+}
+```
+
+## Streaming to the DOM
+
+Here's a practical example of streaming to a web page:
+
+```typescript
+const messageElement = document.getElementById('assistant-message');
+messageElement.textContent = '';
+
+const stream = await client.chat.completions.create({
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: userInput }
+  ],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) {
+    messageElement.textContent += delta;
+  }
+}
+```
+
+## Stream Chunk Format
+
+Each chunk follows the OpenAI streaming format:
+
+```typescript
+{
+  id: "chatcmpl-123",
+  object: "chat.completion.chunk",
+  created: 1234567890,
+  model: "Llama-3.1-8B-Instruct-q4f16_1-MLC",
+  choices: [
+    {
+      index: 0,
+      delta: {
+        role: "assistant",  // Only in first chunk
+        content: "Hello"    // Token content
+      },
+      finish_reason: null   // "stop" in final chunk
+    }
+  ]
+}
+```
+
+## Handling Stream Completion
+
+```typescript
+let fullResponse = '';
+
+for await (const chunk of stream) {
+  const choice = chunk.choices[0];
+
+  if (choice?.delta?.content) {
+    fullResponse += choice.delta.content;
+    updateUI(fullResponse);
+  }
+
+  if (choice?.finish_reason === 'stop') {
+    console.log('Generation complete!');
+    console.log('Model used:', chunk.model);
+  }
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const stream = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello!' }],
+    stream: true
+  });
+
+  for await (const chunk of stream) {
+    // Process chunks
+  }
+} catch (error) {
+  console.error('Streaming failed:', error);
+  // Handle error (e.g., show user-friendly message)
+}
+```
+
+## Performance Tips
+
+- **Use Web Workers**: By default, inference runs in a Web Worker to keep the main thread responsive
+- **Debounce UI updates**: If rendering is expensive, consider debouncing DOM updates
+- **Show loading states**: Display a loading indicator before the first chunk arrives
+
+## Next Steps
+
+- [Hybrid Mode](/examples/hybrid-mode) — Combine local and cloud streaming
+- [Abort Requests](/guides/abort-requests) — Cancel ongoing generation
+- [Custom Providers](/guides/custom-providers) — Implement custom streaming logic

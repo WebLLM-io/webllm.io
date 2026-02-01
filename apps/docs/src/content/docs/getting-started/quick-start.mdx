@@ -1,0 +1,181 @@
+---
+title: "Quick Start"
+description: "Get up and running with WebLLM.io in minutes - from installation to your first completion"
+---
+
+# Quick Start
+
+This guide will walk you through creating your first AI completions with WebLLM.io.
+
+## Step 1: Import and Create Client
+
+First, import the SDK and create a client instance:
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto', // Auto-detect device capability and select model
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: 'sk-your-api-key-here',
+  },
+});
+```
+
+### Configuration Options
+
+- **`local: 'auto'`** — Automatically selects the best local model based on device capability
+- **`cloud: { ... }`** — Cloud provider configuration (OpenAI compatible)
+
+:::tip[Cloud Only Mode]
+To use cloud inference only, omit the `local` option:
+
+```ts
+const client = createClient({
+  cloud: { baseURL: '...', apiKey: '...' },
+});
+```
+:::
+
+## Step 2: Make Your First Completion
+
+Use the OpenAI-compatible Chat Completions API:
+
+```ts
+const result = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello, world!' }],
+});
+
+console.log(result.choices[0].message.content);
+// Output: "Hello! How can I help you today?"
+```
+
+### Request Options
+
+```ts
+const result = await client.chat.completions.create({
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'What is the capital of France?' },
+  ],
+  temperature: 0.7,
+  max_tokens: 100,
+});
+```
+
+## Step 3: Streaming Completions
+
+For real-time responses, use streaming mode:
+
+```ts
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a short poem about coding.' }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content ?? '';
+  process.stdout.write(content);
+}
+```
+
+### Browser Example (Streaming)
+
+```ts
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Explain quantum computing.' }],
+  stream: true,
+});
+
+const container = document.getElementById('output');
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content ?? '';
+  container.textContent += content;
+}
+```
+
+## Step 4: Abort/Interrupt Requests
+
+Cancel ongoing completions:
+
+```ts
+const controller = new AbortController();
+
+// Start completion
+const promise = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Count to 1000.' }],
+  signal: controller.signal,
+});
+
+// Abort after 2 seconds
+setTimeout(() => controller.abort(), 2000);
+
+try {
+  await promise;
+} catch (error) {
+  console.log('Request aborted');
+}
+```
+
+## Step 5: Clean Up
+
+When you're done, dispose of the client to free resources:
+
+```ts
+await client.dispose();
+```
+
+:::caution
+Always call `dispose()` when you no longer need the client, especially when using local inference. This releases WebGPU resources and terminates Web Workers.
+:::
+
+## Complete Example
+
+Putting it all together:
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+
+async function main() {
+  // Create client
+  const client = createClient({
+    local: 'auto',
+    cloud: {
+      baseURL: 'https://api.openai.com/v1',
+      apiKey: process.env.OPENAI_API_KEY,
+    },
+  });
+
+  // Non-streaming completion
+  const result = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello!' }],
+  });
+  console.log('Non-streaming:', result.choices[0].message.content);
+
+  // Streaming completion
+  const stream = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Count to 5.' }],
+    stream: true,
+  });
+
+  process.stdout.write('Streaming: ');
+  for await (const chunk of stream) {
+    process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+  }
+  console.log('\n');
+
+  // Clean up
+  await client.dispose();
+}
+
+main().catch(console.error);
+```
+
+## Next Steps
+
+- [Playground](/getting-started/playground) — Try the interactive demo
+- [Configuration](/guides/configuration) — Learn about advanced options
+- [Local Inference](/guides/local-inference) — Deep dive into WebGPU models
+- [Cloud Providers](/guides/cloud-providers) — Configure cloud fallback

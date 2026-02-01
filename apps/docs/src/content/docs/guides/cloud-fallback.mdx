@@ -1,0 +1,247 @@
+---
+title: "Cloud Fallback"
+description: "Configure cloud API endpoints as fallback or primary inference backend"
+---
+
+WebLLM.io supports cloud-based inference using OpenAI-compatible APIs. This enables instant responses, server-side model execution, and zero local dependencies for pure cloud mode.
+
+## Zero Dependencies for Cloud-Only Mode
+
+When using cloud-only configuration (no local inference), WebLLM.io has **zero external dependencies**. The SDK includes a self-implemented SSE (Server-Sent Events) parser, eliminating the need for the OpenAI SDK or any other HTTP client library.
+
+```bash
+# Cloud-only mode requires NO peer dependencies
+npm install @webllm-io/sdk
+```
+
+## Basic Usage
+
+Configure cloud inference with an API endpoint and key:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: 'sk-your-api-key-here',
+    model: 'gpt-4o-mini'
+  }
+});
+
+const completion = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Explain quantum computing' }
+  ]
+});
+
+console.log(completion.choices[0].message.content);
+```
+
+## Shorthand String Configuration
+
+For quick setup, pass the API key as a string (assumes OpenAI):
+
+```typescript
+const client = createClient({
+  cloud: 'sk-your-api-key-here'
+});
+
+// Specify model in each request
+const completion = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  model: 'gpt-4o-mini'
+});
+```
+
+## OpenAI-Compatible APIs
+
+WebLLM.io works with any OpenAI-compatible API endpoint. Examples include:
+
+### OpenAI
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+### Azure OpenAI
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'https://your-resource.openai.azure.com/openai/deployments/your-deployment',
+    apiKey: process.env.AZURE_OPENAI_KEY,
+    headers: {
+      'api-version': '2024-02-01'
+    },
+    model: 'gpt-4o'
+  }
+});
+```
+
+### Groq
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.groq.com/openai/v1',
+    apiKey: process.env.GROQ_API_KEY,
+    model: 'llama-3.1-70b-versatile'
+  }
+});
+```
+
+### Local OpenAI-Compatible Server
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'http://localhost:1234/v1',
+    model: 'local-model'
+    // No API key required for local servers
+  }
+});
+```
+
+## Custom Headers
+
+Add custom headers for authentication or API versioning:
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.example.com/v1',
+    apiKey: 'your-key',
+    model: 'custom-model',
+    headers: {
+      'X-Custom-Header': 'value',
+      'Authorization': 'Bearer custom-token'  // Override default auth
+    }
+  }
+});
+```
+
+## Timeout and Retries
+
+Configure request timeout and automatic retries:
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini',
+    timeout: 30000,  // 30 seconds (default: 60000)
+    retries: 3       // Retry failed requests 3 times (default: 2)
+  }
+});
+```
+
+Timeouts apply to the entire request (including streaming). Retries only trigger on network errors, not on API errors (4xx/5xx status codes).
+
+## Using the fetchSSE Provider
+
+For advanced use cases, you can create a cloud provider explicitly using `fetchSSE()`:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+
+const cloudProvider = fetchSSE({
+  baseURL: 'https://api.openai.com/v1',
+  apiKey: process.env.OPENAI_API_KEY,
+  model: 'gpt-4o-mini',
+  timeout: 45000,
+  retries: 5
+});
+
+const client = createClient({
+  cloud: cloudProvider
+});
+```
+
+This is equivalent to passing the object configuration directly, but gives you a reusable provider instance.
+
+## Environment Variables
+
+Store API keys securely using environment variables:
+
+```typescript
+// .env
+OPENAI_API_KEY=sk-your-api-key-here
+GROQ_API_KEY=gsk_your-groq-key-here
+```
+
+```typescript
+// app.ts
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: import.meta.env.OPENAI_API_KEY,  // Vite
+    // apiKey: process.env.OPENAI_API_KEY,   // Node.js
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+**Never commit API keys to version control.**
+
+## Model Override per Request
+
+Override the default model for individual requests:
+
+```typescript
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'  // default
+  }
+});
+
+// Use default model
+await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Quick question' }]
+});
+
+// Override with a different model
+await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Complex reasoning task' }],
+  model: 'gpt-4o'
+});
+```
+
+## Error Handling
+
+Handle API errors gracefully:
+
+```typescript
+try {
+  const completion = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello!' }]
+  });
+  console.log(completion.choices[0].message.content);
+} catch (error) {
+  if (error.status === 401) {
+    console.error('Invalid API key');
+  } else if (error.status === 429) {
+    console.error('Rate limit exceeded');
+  } else if (error.status === 500) {
+    console.error('Server error');
+  } else {
+    console.error('Request failed:', error.message);
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [Hybrid Routing](/guides/hybrid-routing) to combine local and cloud inference
+- Explore [Streaming](/guides/streaming) for real-time token-by-token responses
+- See [Abort Requests](/guides/abort-requests) to cancel in-flight API calls

@@ -1,0 +1,298 @@
+---
+title: "Device Scoring"
+description: "Hardware capability detection and automatic model selection based on VRAM estimation"
+---
+
+WebLLM.io automatically detects your device's hardware capabilities and assigns a score (S/A/B/C) to select the optimal model. This ensures the best possible user experience across devices ranging from high-end desktops to mobile phones.
+
+## Device Grade System
+
+The SDK uses a four-tier grading system based on available GPU memory:
+
+| Grade | VRAM Range | Typical Devices | Default Model | Model Size |
+|-------|------------|-----------------|---------------|------------|
+| **S** | ≥8192 MB | High-end desktop GPUs (RTX 3080+, M2 Max+) | Llama-3.1-8B-Instruct-q4f16_1-MLC | ~5.5 GB |
+| **A** | ≥4096 MB | Mid-range GPUs (RTX 3060, M1/M2 Pro, iPad Pro) | Llama-3.1-8B-Instruct-q4f16_1-MLC | ~5.5 GB |
+| **B** | ≥2048 MB | Entry-level GPUs (Integrated Intel/AMD, M1 base) | Phi-3.5-mini-instruct-q4f16_1-MLC | ~2.2 GB |
+| **C** | &lt;2048 MB | Mobile devices, older laptops | Qwen2.5-1.5B-Instruct-q4f16_1-MLC | ~1.0 GB |
+
+**Important:** All grades support local inference. The C grade uses a lightweight but capable 1.5B parameter model, ensuring even low-end devices can run local AI.
+
+## VRAM Estimation Method
+
+Unlike traditional VRAM detection (which requires OS-level APIs), WebLLM.io uses a WebGPU-based estimation technique:
+
+```
+WebGPU Adapter
+    ↓
+adapter.limits.maxStorageBufferBindingSize
+    ↓
+Proxy for VRAM capacity
+    ↓
+Device Grade (S/A/B/C)
+```
+
+### Why maxStorageBufferBindingSize?
+
+The `maxStorageBufferBindingSize` limit indicates the maximum size of a single storage buffer binding in bytes. This value correlates strongly with total GPU memory:
+
+- **High VRAM devices** expose large buffer limits (≥1GB)
+- **Low VRAM devices** expose smaller limits (&lt;128MB)
+
+While not a perfect 1:1 mapping, this heuristic works reliably across browsers and platforms.
+
+### Detection Code Example
+
+```typescript
+// Simplified version of capability detection
+async function detectDeviceGrade(): Promise<'S' | 'A' | 'B' | 'C'> {
+  if (!navigator.gpu) {
+    throw new Error('WebGPU not supported')
+  }
+
+  const adapter = await navigator.gpu.requestAdapter()
+  if (!adapter) {
+    throw new Error('No WebGPU adapter available')
+  }
+
+  const maxBufferSize = adapter.limits.maxStorageBufferBindingSize
+  const estimatedVRAM_MB = Math.floor(maxBufferSize / (1024 * 1024))
+
+  if (estimatedVRAM_MB >= 8192) return 'S'
+  if (estimatedVRAM_MB >= 4096) return 'A'
+  if (estimatedVRAM_MB >= 2048) return 'B'
+  return 'C'
+}
+```
+
+## Model Selection Strategy
+
+### Automatic Selection (Zero Config)
+
+With `local: 'auto'`, the SDK selects the best model for your device:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+
+const client = createClient({
+  local: 'auto'
+})
+
+// Automatically selects:
+// S/A grade → Llama-3.1-8B-Instruct-q4f16_1-MLC
+// B grade   → Phi-3.5-mini-instruct-q4f16_1-MLC
+// C grade   → Qwen2.5-1.5B-Instruct-q4f16_1-MLC
+```
+
+### Custom Tiers (Responsive Config)
+
+You can override default models for each tier:
+
+```typescript
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-70B-Instruct-q3f16_1-MLC',    // For S/A grade
+      medium: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',   // For B grade
+      low: 'TinyLlama-1.1B-Chat-q4f16_1-MLC'         // For C grade
+    }
+  }
+})
+```
+
+The SDK maps grades to tiers:
+- **S and A grades** → `high` tier
+- **B grade** → `medium` tier
+- **C grade** → `low` tier
+
+## Device Grade Examples
+
+### Grade S: High-End Desktop
+
+**Hardware:**
+- NVIDIA RTX 4090 (24GB VRAM)
+- Apple M2 Max (32GB unified memory)
+- AMD RX 7900 XTX (24GB VRAM)
+
+**Model Selection:**
+- Default: Llama-3.1-8B-Instruct (~5.5GB)
+- Can run: Any quantized model up to 13B parameters
+- Inference Speed: ~30-50 tokens/sec
+
+### Grade A: Mid-Range
+
+**Hardware:**
+- NVIDIA RTX 3060 (12GB VRAM)
+- Apple M1/M2 Pro (16GB unified memory)
+- iPad Pro M2 (8GB RAM)
+
+**Model Selection:**
+- Default: Llama-3.1-8B-Instruct (~5.5GB)
+- Can run: 7B-8B quantized models comfortably
+- Inference Speed: ~15-25 tokens/sec
+
+### Grade B: Entry-Level
+
+**Hardware:**
+- Intel Iris Xe (integrated GPU)
+- AMD Radeon 680M (integrated GPU)
+- Apple M1 base (8GB unified memory)
+
+**Model Selection:**
+- Default: Phi-3.5-mini-instruct (~2.2GB)
+- Can run: 3B-4B parameter models
+- Inference Speed: ~8-15 tokens/sec
+
+### Grade C: Mobile/Low-End
+
+**Hardware:**
+- iPhone 15 Pro
+- Android flagship phones
+- Low-power laptops with integrated graphics
+
+**Model Selection:**
+- Default: Qwen2.5-1.5B-Instruct (~1.0GB)
+- Can run: Lightweight models up to 1.5B parameters
+- Inference Speed: ~5-10 tokens/sec
+
+## Checking Device Capability
+
+Use the `checkCapability()` function to inspect your device grade:
+
+```typescript
+import { checkCapability } from '@webllm-io/sdk'
+
+const capability = await checkCapability()
+
+console.log(capability)
+// {
+//   webgpu: true,
+//   grade: 'A',
+//   estimatedVRAM_MB: 4096,
+//   recommendedModel: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+// }
+```
+
+This is useful for debugging or showing system information in your UI:
+
+```typescript
+// Show capability to user
+const cap = await checkCapability()
+document.getElementById('gpu-info').textContent =
+  `Device Grade: ${cap.grade} (${cap.estimatedVRAM_MB}MB estimated VRAM)`
+```
+
+## Model Size vs Quality Trade-offs
+
+Understanding the trade-offs helps in custom tier configuration:
+
+```
+Model Parameters  Model Size  Quality   Speed      VRAM Required
+────────────────────────────────────────────────────────────────
+70B (q3f16_1)     ~40 GB      Excellent Very Slow  S grade only
+13B (q4f16_1)     ~8 GB       Very Good Slow       S grade
+8B  (q4f16_1)     ~5.5 GB     Good      Medium     S/A grade
+3.5B (q4f16_1)    ~2.2 GB     Fair      Fast       B grade
+1.5B (q4f16_1)    ~1.0 GB     Basic     Very Fast  C grade
+```
+
+**Quantization Levels:**
+- `q4f16_1`: 4-bit weights, 16-bit activations (good balance)
+- `q3f16_1`: 3-bit weights, 16-bit activations (higher compression)
+
+## Handling Detection Failures
+
+If WebGPU is unavailable or detection fails, the SDK falls back to cloud:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+})
+
+// If WebGPU unavailable → automatically uses cloud
+await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+### Detection Edge Cases
+
+1. **Browser doesn't support WebGPU**
+   - Solution: Fall back to cloud backend
+   - Affected: Safari < 18, Firefox < 120 (partial support)
+
+2. **WebGPU disabled by user/policy**
+   - Solution: Cloud fallback
+   - Common in enterprise environments with strict security policies
+
+3. **Adapter request denied**
+   - Solution: Cloud fallback
+   - Rare, may occur on headless systems or virtual machines
+
+4. **Unusually low maxStorageBufferBindingSize**
+   - Solution: Assign C grade and use lightweight model
+   - May occur on very old integrated GPUs
+
+## Best Practices
+
+### 1. Trust Auto-Detection for Most Use Cases
+
+The default model selection is optimized for each grade:
+
+```typescript
+// Recommended for most apps
+const client = createClient({ local: 'auto' })
+```
+
+### 2. Customize Tiers for Specific Needs
+
+If you need specific quality/speed trade-offs:
+
+```typescript
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',   // Quality focus
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC', // Balanced
+      low: 'TinyLlama-1.1B-Chat-q4f16_1-MLC'       // Speed focus
+    }
+  }
+})
+```
+
+### 3. Show Capability Info to Users
+
+Let users know what they're getting:
+
+```typescript
+const cap = await checkCapability()
+showNotification(
+  `Running ${cap.recommendedModel} locally (Grade ${cap.grade})`
+)
+```
+
+### 4. Test Across Device Grades
+
+Use browser DevTools to simulate different limits:
+
+```typescript
+// Mock lower-grade device for testing
+if (import.meta.env.DEV) {
+  Object.defineProperty(navigator.gpu, 'requestAdapter', {
+    value: async () => ({
+      limits: { maxStorageBufferBindingSize: 2048 * 1024 * 1024 } // Force B grade
+    })
+  })
+}
+```
+
+## Next Steps
+
+- Learn about the [Three-Level API](/concepts/three-level-api) for progressive configuration
+- Understand [Request Queue](/concepts/request-queue) for concurrent inference
+- Explore [Architecture](/concepts/architecture) for overall system design

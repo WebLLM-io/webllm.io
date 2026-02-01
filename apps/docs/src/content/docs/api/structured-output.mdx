@@ -1,0 +1,377 @@
+---
+title: "withJsonOutput()"
+description: "Helper function to add JSON output formatting to chat completion requests"
+---
+
+Simple utility function that adds `response_format: { type: 'json_object' }` to chat completion requests, instructing models to output valid JSON.
+
+## Signature
+
+```ts
+function withJsonOutput<T extends ChatCompletionRequest>(req: T): T;
+```
+
+## Parameters
+
+### `req`
+
+Chat completion request object to modify.
+
+- Type: `T extends ChatCompletionRequest`
+- Required fields from `ChatCompletionRequest`:
+  - `messages` - Array of chat messages
+  - `model?` - Optional model identifier
+  - `temperature?` - Optional temperature setting
+  - `max_tokens?` - Optional max token limit
+  - Additional OpenAI-compatible parameters
+
+## Return Value
+
+Returns the same request object with `response_format` added:
+
+```ts
+{
+  ...req,
+  response_format: { type: 'json_object' }
+}
+```
+
+The function performs a shallow merge, preserving all original request properties.
+
+## Type Safety
+
+The function is generic and preserves the input type:
+
+```ts
+const req = { messages: [...], temperature: 0.7 };
+const jsonReq = withJsonOutput(req);
+// jsonReq has type: typeof req & { response_format: { type: 'json_object' } }
+```
+
+## Examples
+
+### Basic usage
+
+```ts
+import { createClient, withJsonOutput } from '@webllm-io/sdk';
+
+const client = createClient();
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a helpful assistant that outputs valid JSON.'
+      },
+      {
+        role: 'user',
+        content: 'Generate a user profile with name, age, and occupation.'
+      }
+    ]
+  })
+);
+
+const data = JSON.parse(response.choices[0].message.content);
+console.log(data);
+// { name: "John Doe", age: 30, occupation: "Engineer" }
+```
+
+### With streaming
+
+```ts
+const stream = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'user',
+        content: 'List 3 programming languages as JSON array'
+      }
+    ],
+    stream: true
+  })
+);
+
+let jsonString = '';
+for await (const chunk of stream) {
+  jsonString += chunk.choices[0]?.delta?.content || '';
+}
+
+const languages = JSON.parse(jsonString);
+console.log(languages);
+// ["Python", "JavaScript", "TypeScript"]
+```
+
+### Structured data extraction
+
+```ts
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `Extract structured data from user input.
+Output format: { "intent": string, "entities": string[], "sentiment": "positive" | "neutral" | "negative" }`
+      },
+      {
+        role: 'user',
+        content: 'I love the new iPhone 15 Pro and its amazing camera!'
+      }
+    ],
+    temperature: 0.3
+  })
+);
+
+const extracted = JSON.parse(response.choices[0].message.content);
+console.log(extracted);
+// {
+//   intent: "product_review",
+//   entities: ["iPhone 15 Pro", "camera"],
+//   sentiment: "positive"
+// }
+```
+
+### With custom model settings
+
+```ts
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'user',
+        content: 'Generate 5 random todo items with id, title, completed fields'
+      }
+    ],
+    model: 'gpt-4o-mini',
+    temperature: 0.8,
+    max_tokens: 500
+  })
+);
+
+const todos = JSON.parse(response.choices[0].message.content);
+console.log(todos);
+// [
+//   { id: 1, title: "Buy groceries", completed: false },
+//   { id: 2, title: "Finish report", completed: true },
+//   ...
+// ]
+```
+
+### TypeScript type narrowing
+
+```ts
+interface UserProfile {
+  name: string;
+  age: number;
+  email: string;
+}
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `Generate a user profile with this schema:
+{ name: string, age: number, email: string }`
+      },
+      {
+        role: 'user',
+        content: 'Create a profile for a software engineer'
+      }
+    ]
+  })
+);
+
+const profile: UserProfile = JSON.parse(
+  response.choices[0].message.content
+);
+
+console.log(profile.name); // Type-safe access
+```
+
+### Error handling
+
+```ts
+try {
+  const response = await client.chat.completions.create(
+    withJsonOutput({
+      messages: [
+        {
+          role: 'user',
+          content: 'Generate product catalog as JSON'
+        }
+      ]
+    })
+  );
+
+  const data = JSON.parse(response.choices[0].message.content);
+  console.log(data);
+} catch (error) {
+  if (error instanceof SyntaxError) {
+    console.error('Model returned invalid JSON:', error.message);
+  } else {
+    console.error('Request failed:', error);
+  }
+}
+```
+
+### Combining with other request options
+
+```ts
+import { withJsonOutput } from '@webllm-io/sdk';
+
+const baseRequest = {
+  messages: [
+    { role: 'user', content: 'Summarize this article as JSON' }
+  ],
+  temperature: 0.5,
+  max_tokens: 1000,
+  top_p: 0.9,
+  frequency_penalty: 0.2
+};
+
+const jsonRequest = withJsonOutput(baseRequest);
+
+console.log(jsonRequest);
+// {
+//   messages: [...],
+//   temperature: 0.5,
+//   max_tokens: 1000,
+//   top_p: 0.9,
+//   frequency_penalty: 0.2,
+//   response_format: { type: 'json_object' }
+// }
+```
+
+## Important Notes
+
+### JSON Validity
+
+The `response_format: { type: 'json_object' }` parameter instructs the model to output valid JSON, but it does **not guarantee**:
+
+1. **Schema adherence** - The JSON structure may not match your expected schema
+2. **Field presence** - Required fields may be missing
+3. **Type correctness** - Field types may differ from expectations
+
+**Always validate the parsed JSON** against your schema:
+
+```ts
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  name: z.string(),
+  age: z.number(),
+  email: z.string().email()
+});
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      { role: 'user', content: 'Generate user profile' }
+    ]
+  })
+);
+
+const parsed = JSON.parse(response.choices[0].message.content);
+const validated = UserSchema.parse(parsed); // Throws if invalid
+```
+
+### Prompt Engineering
+
+For best results, **explicitly describe the JSON schema** in your system prompt:
+
+```ts
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `You are a JSON-only assistant. Always respond with valid JSON.
+Schema: { "answer": string, "confidence": number (0-1), "sources": string[] }`
+      },
+      {
+        role: 'user',
+        content: 'What is the capital of France?'
+      }
+    ]
+  })
+);
+```
+
+### Model Compatibility
+
+**Not all models support structured output.**
+
+- **OpenAI models:** `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo` support `response_format`
+- **Local MLC models:** May not respect `response_format` parameter; rely on prompt engineering
+- **Other providers:** Check provider documentation for JSON mode support
+
+If using an unsupported model, the parameter will be ignored. Ensure your prompt includes instructions for JSON output.
+
+### Alternative: Function Calling
+
+For stricter schema enforcement, consider using **function calling** (if supported):
+
+```ts
+const response = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Extract user info from: John Doe, 30, engineer' }
+  ],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'save_user',
+        description: 'Save user profile',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            age: { type: 'number' },
+            occupation: { type: 'string' }
+          },
+          required: ['name', 'age', 'occupation']
+        }
+      }
+    }
+  ],
+  tool_choice: { type: 'function', function: { name: 'save_user' } }
+});
+
+const args = JSON.parse(
+  response.choices[0].message.tool_calls[0].function.arguments
+);
+```
+
+## Implementation Details
+
+The function is a simple helper that performs a shallow object merge:
+
+```ts
+function withJsonOutput<T extends ChatCompletionRequest>(req: T): T {
+  return {
+    ...req,
+    response_format: { type: 'json_object' }
+  };
+}
+```
+
+This is equivalent to manually adding the field:
+
+```ts
+// Using withJsonOutput
+const req = withJsonOutput({ messages: [...] });
+
+// Manual equivalent
+const req = {
+  messages: [...],
+  response_format: { type: 'json_object' }
+};
+```
+
+## See Also
+
+- [Chat Completions](/api/chat-completions) - Core inference API
+- [createClient()](/api/create-client) - Client initialization
+- [WebLLMClient](/api/webllm-client) - Client interface
+- [JSON Output Example](/examples/json-output) - Complete example usage

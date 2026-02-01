@@ -1,0 +1,159 @@
+---
+title: "createClient()"
+description: "Factory function to create a WebLLM client instance with local and cloud inference capabilities"
+---
+
+Creates a new WebLLM client instance with optional local and cloud configuration.
+
+## Signature
+
+```ts
+function createClient(options?: CreateClientOptions): WebLLMClient;
+```
+
+## Parameters
+
+### `options` (optional)
+
+Configuration object for the client.
+
+```ts
+interface CreateClientOptions {
+  local?: LocalConfig;
+  cloud?: CloudConfig;
+  onProgress?: ProgressCallback;
+}
+```
+
+#### `local`
+
+Configuration for local inference using WebGPU and MLC models. See [Config Types](/api/config-types) for all supported formats.
+
+- Type: `LocalConfig`
+- Default: `'auto'`
+- Can be: `'auto'`, `false`, `null`, model string, config object, function, or provider instance
+
+#### `cloud`
+
+Configuration for cloud inference using OpenAI-compatible APIs. See [Config Types](/api/config-types) for all supported formats.
+
+- Type: `CloudConfig`
+- Default: `undefined`
+- Can be: API key string, config object, custom function, or provider instance
+
+#### `onProgress`
+
+Callback invoked during local model loading with progress updates.
+
+- Type: `ProgressCallback`
+- Default: `undefined`
+
+```ts
+type ProgressCallback = (progress: LoadProgress) => void;
+
+interface LoadProgress {
+  stage: 'download' | 'compile' | 'warmup';
+  progress: number;
+  model: string;
+  bytesLoaded?: number;
+  bytesTotal?: number;
+}
+```
+
+## Return Value
+
+Returns a [`WebLLMClient`](/api/webllm-client) instance with chat completions API and lifecycle methods.
+
+## Requirements
+
+**At least one of `local` or `cloud` must be configured.** If both are disabled, the client will throw an error during initialization.
+
+## Examples
+
+### Zero-config (local only)
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient();
+// Uses local inference with auto device-based model selection
+```
+
+### Cloud only
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: process.env.OPENAI_API_KEY
+});
+```
+
+### Dual engine with progress tracking
+
+```ts
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+    },
+    useCache: true,
+    useWebWorker: true
+  },
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  },
+  onProgress: (progress) => {
+    console.log(`${progress.stage}: ${Math.round(progress.progress * 100)}%`);
+  }
+});
+```
+
+### Custom provider functions
+
+```ts
+import { mlc, fetchSSE } from '@webllm-io/sdk/providers';
+
+const client = createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWebWorker: true
+  }),
+  cloud: fetchSSE({
+    baseURL: 'https://api.anthropic.com/v1',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-3-5-sonnet-20241022',
+    headers: {
+      'anthropic-version': '2023-06-01'
+    }
+  })
+});
+```
+
+### Dynamic model selection
+
+```ts
+const client = createClient({
+  local: (stats) => {
+    if (stats.vram > 8000) return 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+    if (stats.vram > 4000) return 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+    return 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+  },
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+## See Also
+
+- [WebLLMClient](/api/webllm-client) - Client instance methods
+- [Chat Completions](/api/chat-completions) - Inference API
+- [Config Types](/api/config-types) - All configuration options
+- [Providers (MLC)](/api/providers-mlc) - Local inference provider
+- [Providers (Fetch)](/api/providers-fetch) - Cloud inference provider

@@ -1,0 +1,386 @@
+---
+title: "Chat Completions"
+description: "OpenAI-compatible chat completions API with streaming support and automatic local/cloud routing"
+---
+
+The chat completions API provides OpenAI-compatible text generation with both streaming and non-streaming modes, automatic provider routing, and abort support.
+
+## Interface
+
+```ts
+interface Completions {
+  create(req: ChatCompletionRequest & { stream: true }): AsyncIterable<ChatCompletionChunk>;
+  create(req: ChatCompletionRequest & { stream?: false }): Promise<ChatCompletion>;
+}
+```
+
+## Request
+
+### `ChatCompletionRequest`
+
+```ts
+interface ChatCompletionRequest {
+  messages: Message[];
+  model?: string;
+  stream?: boolean;
+  temperature?: number;
+  max_tokens?: number;
+  response_format?: { type: 'text' | 'json_object' };
+  signal?: AbortSignal;
+  provider?: 'local' | 'cloud';
+}
+```
+
+#### `messages` (required)
+
+Array of conversation messages in chronological order.
+
+- Type: `Message[]`
+
+```ts
+interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+```
+
+**Example:**
+
+```ts
+messages: [
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'What is the capital of France?' },
+  { role: 'assistant', content: 'The capital of France is Paris.' },
+  { role: 'user', content: 'What about Spain?' }
+]
+```
+
+#### `model` (optional)
+
+Override the model for this request. If not specified, uses the model configured in the provider.
+
+- Type: `string`
+- Default: Provider's default model
+
+**Example:**
+
+```ts
+model: 'gpt-4o-mini'  // Cloud
+model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'  // Local
+```
+
+#### `stream` (optional)
+
+Enable streaming mode for real-time token-by-token responses.
+
+- Type: `boolean`
+- Default: `false`
+
+#### `temperature` (optional)
+
+Sampling temperature between 0 and 2. Higher values increase randomness.
+
+- Type: `number`
+- Range: `0.0` - `2.0`
+- Default: `1.0`
+
+#### `max_tokens` (optional)
+
+Maximum number of tokens to generate.
+
+- Type: `number`
+- Default: Provider-specific (typically unlimited or model's context limit)
+
+#### `response_format` (optional)
+
+Specify output format. Use `'json_object'` to enable JSON mode.
+
+- Type: `{ type: 'text' | 'json_object' }`
+- Default: `{ type: 'text' }`
+
+**Example:**
+
+```ts
+response_format: { type: 'json_object' }
+```
+
+See also [`withJsonOutput()`](/api/structured-output) helper.
+
+#### `signal` (optional)
+
+AbortSignal to cancel the request.
+
+- Type: `AbortSignal`
+- Default: `undefined`
+
+**Example:**
+
+```ts
+const controller = new AbortController();
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Long task...' }],
+  signal: controller.signal
+});
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+```
+
+#### `provider` (optional)
+
+Force a specific provider instead of automatic routing.
+
+- Type: `'local' | 'cloud'`
+- Default: Automatic routing based on availability and device capability
+
+## Response
+
+### Non-streaming (`stream: false`)
+
+Returns a `ChatCompletion` object with the complete generated response.
+
+```ts
+interface ChatCompletion {
+  id: string;
+  object: 'chat.completion';
+  created: number;
+  model: string;
+  choices: ChatCompletionChoice[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+interface ChatCompletionChoice {
+  index: number;
+  message: Message;
+  finish_reason: 'stop' | 'length' | 'content_filter' | null;
+}
+```
+
+**Example:**
+
+```ts
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+
+console.log(response.choices[0].message.content);
+// "Hello! How can I assist you today?"
+
+console.log(response.model);
+// "gpt-4o-mini" or "Llama-3.1-8B-Instruct-q4f16_1-MLC"
+
+console.log(response.usage);
+// { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 }
+```
+
+### Streaming (`stream: true`)
+
+Returns an `AsyncIterable<ChatCompletionChunk>` for real-time token streaming.
+
+```ts
+interface ChatCompletionChunk {
+  id: string;
+  object: 'chat.completion.chunk';
+  created: number;
+  model: string;
+  choices: ChatCompletionChunkChoice[];
+}
+
+interface ChatCompletionChunkChoice {
+  index: number;
+  delta: {
+    role?: 'assistant';
+    content?: string;
+  };
+  finish_reason: 'stop' | 'length' | 'content_filter' | null;
+}
+```
+
+**Example:**
+
+```ts
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a poem about the ocean.' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) {
+    process.stdout.write(content);
+  }
+}
+```
+
+## Usage Examples
+
+### Basic completion
+
+```ts
+const response = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'What is 2 + 2?' }
+  ]
+});
+
+console.log(response.choices[0].message.content);
+// "2 + 2 equals 4."
+```
+
+### Streaming with React
+
+```tsx
+import { useState } from 'react';
+
+function ChatComponent() {
+  const [output, setOutput] = useState('');
+
+  const handleSubmit = async (userMessage: string) => {
+    const stream = await client.chat.completions.create({
+      messages: [{ role: 'user', content: userMessage }],
+      stream: true
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      setOutput(prev => prev + content);
+    }
+  };
+
+  return <div>{output}</div>;
+}
+```
+
+### Multi-turn conversation
+
+```ts
+const messages: Message[] = [
+  { role: 'system', content: 'You are a math tutor.' }
+];
+
+// First turn
+messages.push({ role: 'user', content: 'What is a prime number?' });
+const response1 = await client.chat.completions.create({ messages });
+messages.push(response1.choices[0].message);
+
+// Second turn
+messages.push({ role: 'user', content: 'Give me examples.' });
+const response2 = await client.chat.completions.create({ messages });
+messages.push(response2.choices[0].message);
+```
+
+### JSON output
+
+```ts
+import { withJsonOutput } from '@webllm-io/sdk';
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'user',
+        content: 'List 3 colors in JSON format: {"colors": ["...", "...", "..."]}'
+      }
+    ]
+  })
+);
+
+const data = JSON.parse(response.choices[0].message.content);
+console.log(data.colors); // ["red", "blue", "green"]
+```
+
+### Force local or cloud
+
+```ts
+// Force local inference
+const localResponse = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello' }],
+  provider: 'local'
+});
+
+// Force cloud inference
+const cloudResponse = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello' }],
+  provider: 'cloud'
+});
+```
+
+### Abort streaming request
+
+```ts
+const controller = new AbortController();
+
+const stream = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a very long story...' }],
+  stream: true,
+  signal: controller.signal
+});
+
+setTimeout(() => controller.abort(), 3000);
+
+try {
+  for await (const chunk of stream) {
+    console.log(chunk.choices[0]?.delta?.content);
+  }
+} catch (err) {
+  if (err.code === 'ABORTED') {
+    console.log('Request aborted');
+  }
+}
+```
+
+### Temperature and max_tokens
+
+```ts
+// More creative output
+const creative = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a tagline for a coffee shop' }],
+  temperature: 1.5,
+  max_tokens: 20
+});
+
+// More deterministic output
+const deterministic = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'What is 15 * 23?' }],
+  temperature: 0.0
+});
+```
+
+## Error Handling
+
+```ts
+import { WebLLMError } from '@webllm-io/sdk';
+
+try {
+  const response = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello' }]
+  });
+} catch (err) {
+  if (err instanceof WebLLMError) {
+    switch (err.code) {
+      case 'INFERENCE_FAILED':
+        console.error('Inference failed:', err.message);
+        break;
+      case 'CLOUD_REQUEST_FAILED':
+        console.error('Cloud API error:', err.message);
+        break;
+      case 'ABORTED':
+        console.log('Request aborted');
+        break;
+      default:
+        console.error('Unknown error:', err);
+    }
+  }
+}
+```
+
+## See Also
+
+- [WebLLMClient](/api/webllm-client) - Client interface
+- [Structured Output](/api/structured-output) - JSON mode helper
+- [Errors](/api/errors) - Error types and codes
+- [Config Types](/api/config-types) - Provider configuration

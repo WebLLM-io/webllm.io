@@ -1,0 +1,205 @@
+---
+title: Config Types
+description: Type reference for all configuration interfaces.
+---
+
+## CreateClientOptions
+
+The options object passed to `createClient()`.
+
+```ts
+interface CreateClientOptions {
+  local?: LocalConfig;
+  cloud?: CloudConfig;
+  onProgress?: ProgressCallback;
+}
+```
+
+---
+
+## LocalConfig
+
+Configures the local inference backend.
+
+```ts
+type LocalConfig =
+  | 'auto'                              // Auto-detect device, pick model
+  | false | null                        // Disable local inference
+  | string                              // Fixed model ID
+  | LocalObjectConfig                   // Full configuration object
+  | ((stats: DeviceStats) => string | null)  // Dynamic model selector
+  | ResolvedLocalBackend;               // Explicit provider (mlc())
+```
+
+### LocalObjectConfig
+
+```ts
+interface LocalObjectConfig {
+  tiers?: TiersConfig;
+  model?: string;
+  useCache?: boolean;      // Default: true
+  useWebWorker?: boolean;  // Default: true
+}
+```
+
+---
+
+## CloudConfig
+
+Configures the cloud inference backend.
+
+```ts
+type CloudConfig =
+  | string                  // URL shorthand → { baseURL: string }
+  | CloudObjectConfig       // Full configuration object
+  | CloudFn                 // Custom function
+  | ResolvedCloudBackend;   // Explicit provider (fetchSSE())
+```
+
+### CloudObjectConfig
+
+```ts
+interface CloudObjectConfig {
+  baseURL: string;
+  apiKey?: string;
+  model?: string;
+  headers?: Record<string, string>;
+  timeout?: number;   // ms
+  retries?: number;
+}
+```
+
+### CloudFn
+
+A function that handles inference directly.
+
+```ts
+type CloudFn = (
+  messages: Message[],
+  context: RouteContext,
+) => Promise<ChatCompletion> | AsyncIterable<ChatCompletionChunk>;
+```
+
+---
+
+## TiersConfig
+
+Maps device grade categories to model IDs.
+
+```ts
+interface TiersConfig {
+  high?: string | 'auto' | null;    // Grade S/A devices
+  medium?: string | 'auto' | null;  // Grade B devices
+  low?: string | 'auto' | null;     // Grade C devices
+}
+```
+
+- `'auto'` — SDK picks a default model for that tier
+- `null` — Disable local inference for that tier
+- `string` — Specific model ID
+
+---
+
+## LoadProgress
+
+Progress information emitted during model loading.
+
+```ts
+interface LoadProgress {
+  stage: 'download' | 'compile' | 'warmup';
+  progress: number;        // 0 to 1
+  model: string;           // Model ID being loaded
+  bytesLoaded?: number;
+  bytesTotal?: number;
+}
+```
+
+## ProgressCallback
+
+```ts
+type ProgressCallback = (progress: LoadProgress) => void;
+```
+
+---
+
+## DeviceStats
+
+Hardware information collected during capability detection.
+
+```ts
+interface DeviceStats {
+  gpu: GpuInfo | null;
+  grade: DeviceGrade;          // 'S' | 'A' | 'B' | 'C'
+  connection: ConnectionInfo;
+  battery: BatteryInfo | null;
+  memory: number;              // navigator.deviceMemory (GB)
+}
+```
+
+---
+
+## CapabilityReport
+
+Returned by `checkCapability()`.
+
+```ts
+interface CapabilityReport {
+  webgpu: boolean;
+  gpu: GpuInfo | null;
+  grade: DeviceGrade;
+  connection: ConnectionInfo;
+  battery: BatteryInfo | null;
+  memory: number;
+}
+```
+
+---
+
+## Supporting Types
+
+```ts
+type DeviceGrade = 'S' | 'A' | 'B' | 'C';
+
+interface GpuInfo {
+  vendor: string;
+  name: string;
+  vram: number;    // Estimated VRAM in MB
+}
+
+interface ConnectionInfo {
+  type: string;
+  downlink: number;
+  saveData: boolean;
+}
+
+interface BatteryInfo {
+  level: number;
+  charging: boolean;
+}
+```
+
+---
+
+## ModelLoadState
+
+Internal state tracked by the load manager.
+
+```ts
+interface ModelLoadState {
+  modelId: string;
+  status: 'idle' | 'downloading' | 'compiling' | 'ready' | 'error';
+  progress: number;
+  error?: Error;
+}
+```
+
+---
+
+## CacheInfo
+
+```ts
+interface CacheInfo {
+  modelId: string;
+  cached: boolean;
+}
+```

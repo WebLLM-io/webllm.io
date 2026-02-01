@@ -1,0 +1,411 @@
+---
+title: "fetchSSE()"
+description: "Provider function for cloud inference using OpenAI-compatible APIs with SSE streaming support"
+---
+
+Creates a cloud inference provider using OpenAI-compatible Chat Completions API with Server-Sent Events (SSE) streaming. Supports custom endpoints, headers, timeouts, and automatic retries.
+
+## Import
+
+```ts
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+```
+
+## Signature
+
+```ts
+function fetchSSE(options: FetchSSEOptions | string): ResolvedCloudBackend;
+```
+
+## Parameters
+
+### `options`
+
+Configuration object or API key string.
+
+#### String shorthand
+
+When passed a string, it's treated as the API key with default OpenAI endpoint.
+
+```ts
+fetchSSE('sk-...')
+// Equivalent to:
+fetchSSE({
+  baseURL: 'https://api.openai.com/v1',
+  apiKey: 'sk-...',
+  model: 'gpt-4o-mini'
+})
+```
+
+#### Object configuration
+
+```ts
+interface FetchSSEOptions {
+  baseURL: string;
+  apiKey?: string;
+  model?: string;
+  headers?: Record<string, string>;
+  timeout?: number;
+  retries?: number;
+}
+```
+
+##### `baseURL` (required)
+
+Base URL for the Chat Completions API endpoint.
+
+- Type: `string`
+- Must include protocol and path (e.g., `https://api.openai.com/v1`)
+- The SDK appends `/chat/completions` to this URL
+
+**Examples:**
+- OpenAI: `https://api.openai.com/v1`
+- Azure OpenAI: `https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT`
+- Anthropic: `https://api.anthropic.com/v1`
+- Custom: `https://your-api.example.com/v1`
+
+##### `apiKey` (optional)
+
+API authentication key. Sent as `Authorization: Bearer <apiKey>` header.
+
+- Type: `string`
+- Default: `undefined`
+- Omit if using custom authentication via `headers`
+
+##### `model` (optional)
+
+Default model identifier for requests.
+
+- Type: `string`
+- Default: `'gpt-4o-mini'` (for OpenAI)
+- Can be overridden per request via `ChatCompletionRequest.model`
+
+##### `headers` (optional)
+
+Custom HTTP headers for all requests.
+
+- Type: `Record<string, string>`
+- Default: `{}`
+- Use for custom authentication, API versioning, or provider-specific headers
+
+**Example:**
+```ts
+headers: {
+  'anthropic-version': '2023-06-01',
+  'x-custom-header': 'value'
+}
+```
+
+##### `timeout` (optional)
+
+Request timeout in milliseconds.
+
+- Type: `number`
+- Default: `30000` (30 seconds)
+- Applies to both streaming and non-streaming requests
+
+##### `retries` (optional)
+
+Number of retry attempts on network or 5xx errors.
+
+- Type: `number`
+- Default: `3`
+- Uses exponential backoff (1s, 2s, 4s, ...)
+
+## Return Value
+
+Returns a `ResolvedCloudBackend` instance ready for use with `createClient()`.
+
+## Examples
+
+### OpenAI (shorthand)
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+
+const client = createClient({
+  local: false,
+  cloud: fetchSSE(process.env.OPENAI_API_KEY)
+});
+```
+
+### OpenAI (explicit config)
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o',
+    timeout: 60000,
+    retries: 5
+  })
+});
+```
+
+### Anthropic Claude
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.anthropic.com/v1',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-3-5-sonnet-20241022',
+    headers: {
+      'anthropic-version': '2023-06-01'
+    }
+  })
+});
+```
+
+### Azure OpenAI
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: `https://${process.env.AZURE_RESOURCE}.openai.azure.com/openai/deployments/${process.env.AZURE_DEPLOYMENT}`,
+    headers: {
+      'api-key': process.env.AZURE_API_KEY
+    },
+    model: 'gpt-4o'
+  })
+});
+```
+
+### Custom OpenAI-compatible API
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.together.xyz/v1',
+    apiKey: process.env.TOGETHER_API_KEY,
+    model: 'meta-llama/Llama-3.1-8B-Instruct-Turbo',
+    timeout: 120000
+  })
+});
+```
+
+### Local OpenAI-compatible server
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'http://localhost:8000/v1',
+    model: 'llama-3.1-8b'
+  })
+  // No apiKey needed for local server
+});
+```
+
+### Dual provider (local + cloud)
+
+```ts
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+
+const client = createClient({
+  local: mlc(),
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  })
+});
+
+// Uses local by default, cloud as fallback
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+
+// Force cloud
+const cloudResponse = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Complex task' }],
+  provider: 'cloud'
+});
+```
+
+### Custom retry and timeout
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o',
+    timeout: 120000,  // 2 minutes
+    retries: 10       // Retry up to 10 times
+  })
+});
+```
+
+### Environment-based configuration
+
+```ts
+const isDev = process.env.NODE_ENV === 'development';
+
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: isDev
+      ? 'http://localhost:8000/v1'
+      : 'https://api.openai.com/v1',
+    apiKey: isDev ? undefined : process.env.OPENAI_API_KEY,
+    model: isDev ? 'local-model' : 'gpt-4o-mini',
+    timeout: isDev ? 300000 : 60000  // Longer timeout in dev
+  })
+});
+```
+
+### Per-request model override
+
+```ts
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'  // Default model
+  })
+});
+
+// Use default model (gpt-4o-mini)
+const response1 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Simple task' }]
+});
+
+// Override to use gpt-4o
+const response2 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Complex task' }],
+  model: 'gpt-4o'
+});
+```
+
+## Streaming Support
+
+The `fetchSSE()` provider supports both streaming and non-streaming modes using Server-Sent Events (SSE).
+
+```ts
+// Streaming
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a story' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  console.log(chunk.choices[0]?.delta?.content || '');
+}
+
+// Non-streaming
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello' }],
+  stream: false
+});
+```
+
+## Error Handling
+
+```ts
+import { WebLLMError } from '@webllm-io/sdk';
+
+try {
+  const response = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Hello' }]
+  });
+} catch (err) {
+  if (err instanceof WebLLMError) {
+    switch (err.code) {
+      case 'CLOUD_REQUEST_FAILED':
+        console.error('API request failed:', err.message);
+        console.error('Cause:', err.cause);
+        break;
+      case 'TIMEOUT':
+        console.error('Request timed out');
+        break;
+      case 'ABORTED':
+        console.log('Request aborted');
+        break;
+    }
+  }
+}
+```
+
+## API Compatibility
+
+The `fetchSSE()` provider implements OpenAI's Chat Completions API format. It should work with any provider that follows this standard, including:
+
+- **OpenAI** - Native support
+- **Anthropic** - Compatible with custom headers
+- **Azure OpenAI** - Compatible with custom base URL
+- **Together AI** - Compatible
+- **Anyscale** - Compatible
+- **Groq** - Compatible
+- **Ollama** - Compatible (with `/v1` endpoint)
+- **LM Studio** - Compatible
+- **LocalAI** - Compatible
+- **vLLM** - Compatible
+
+## Performance Notes
+
+- **Zero dependencies:** SSE parsing is self-implemented (~30 lines), no `openai` SDK dependency
+- **Automatic retries:** Exponential backoff on network/5xx errors
+- **Abort support:** Full AbortSignal support for canceling requests
+- **Streaming:** Real-time token-by-token streaming via SSE
+
+## Requirements
+
+- **Network:** HTTPS connection (or HTTP for localhost)
+- **CORS:** API must allow cross-origin requests (if used in browser)
+- **Format:** API must implement OpenAI Chat Completions API format
+
+## Troubleshooting
+
+### CORS errors
+
+Ensure the API endpoint has CORS headers configured:
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: POST, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+```
+
+### Authentication errors
+
+```ts
+// Ensure API key is correct and has proper format
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: 'sk-...',  // Must start with 'sk-'
+  })
+});
+```
+
+### Timeout errors
+
+```ts
+// Increase timeout for slow responses
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    timeout: 300000  // 5 minutes
+  })
+});
+```
+
+## See Also
+
+- [createClient()](/api/create-client) - Client creation
+- [Config Types](/api/config-types) - All configuration options
+- [Providers (MLC)](/api/providers-mlc) - Local inference provider
+- [Chat Completions](/api/chat-completions) - Inference API
+- [Errors](/api/errors) - Error handling

@@ -1,0 +1,279 @@
+---
+title: "Hybrid Routing"
+description: "Intelligently route requests between local and cloud inference backends"
+---
+
+Hybrid routing combines the privacy and cost benefits of local inference with the instant availability and power of cloud APIs. WebLLM.io automatically decides which backend to use based on device capabilities, model availability, and loading state.
+
+## Basic Hybrid Configuration
+
+Enable both local and cloud backends:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto',  // Device-aware model selection
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// SDK automatically routes to the best available backend
+const completion = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'Explain hybrid inference' }
+  ]
+});
+```
+
+## Automatic Routing Logic
+
+The SDK decides which backend to use based on:
+
+1. **Device capability** — If WebGPU is unavailable or device grade is too low, cloud is used
+2. **Model loading state** — Cloud responds instantly while local model downloads
+3. **Backend availability** — If one backend fails, the other is tried automatically
+4. **Explicit provider override** — Request-level `provider` parameter forces a specific backend
+
+### Routing by Device Grade
+
+```typescript
+const client = createClient({
+  local: {
+    tiers: {
+      S: 'Llama-3.1-70B-Instruct-q4f16_1-MLC',
+      A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      C: null  // Grade C devices fall back to cloud
+    }
+  },
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+```
+
+On low-end devices (Grade C), cloud is used exclusively. Higher-grade devices run locally.
+
+## Progressive Loading with Cloud Fallback
+
+During model download, the cloud API serves requests immediately:
+
+```typescript
+const client = createClient({
+  local: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  },
+  onProgress: (progress) => {
+    console.log(`Loading model: ${progress.progress}% (${progress.stage})`);
+  }
+});
+
+// First request uses cloud (local model still downloading)
+const completion1 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'First message' }]
+});
+console.log('Backend:', completion1.model);  // 'gpt-4o-mini'
+
+// Wait for model to finish loading...
+// Subsequent requests automatically use local model
+
+const completion2 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Second message' }]
+});
+console.log('Backend:', completion2.model);  // 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+```
+
+This provides instant responsiveness while still leveraging local inference once available.
+
+## Automatic Fallback on Errors
+
+If the primary backend fails, the SDK automatically tries the fallback:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// If local inference fails (e.g., out of memory), cloud is used
+const completion = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Complex task requiring lots of VRAM' }]
+});
+```
+
+Fallback happens transparently without application code changes.
+
+## Force a Specific Provider
+
+Override automatic routing with the `provider` parameter:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// Force local inference
+const localCompletion = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Private data' }],
+  provider: 'local'
+});
+
+// Force cloud API
+const cloudCompletion = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Complex reasoning' }],
+  provider: 'cloud'
+});
+```
+
+If the forced provider is unavailable, the request will fail instead of falling back.
+
+## User-Controlled Provider Selection
+
+Let users choose their preferred inference backend:
+
+```typescript
+function createClientFromUserSettings(settings) {
+  const config = {};
+
+  if (settings.enableLocal) {
+    config.local = settings.localModel || 'auto';
+  }
+
+  if (settings.enableCloud && settings.apiKey) {
+    config.cloud = {
+      baseURL: settings.cloudEndpoint,
+      apiKey: settings.apiKey,
+      model: settings.cloudModel
+    };
+  }
+
+  return createClient(config);
+}
+
+// User preferences from UI
+const userSettings = {
+  enableLocal: true,
+  localModel: 'auto',
+  enableCloud: true,
+  cloudEndpoint: 'https://api.openai.com/v1',
+  apiKey: localStorage.getItem('openai_api_key'),
+  cloudModel: 'gpt-4o-mini'
+};
+
+const client = createClientFromUserSettings(userSettings);
+```
+
+## Cost Optimization
+
+Use local inference by default and cloud as a fallback to minimize API costs:
+
+```typescript
+const client = createClient({
+  local: {
+    tiers: {
+      S: 'Llama-3.1-70B-Instruct-q4f16_1-MLC',
+      A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      C: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'  // Even low-end devices use local
+    }
+  },
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// Use local when possible to save API costs
+// Cloud only used during model loading or on errors
+```
+
+## Privacy-First Routing
+
+Enforce local-only inference for sensitive data:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+function createCompletion(messages, isPrivate) {
+  return client.chat.completions.create({
+    messages,
+    provider: isPrivate ? 'local' : undefined  // Force local for private data
+  });
+}
+
+// Private data stays on device
+await createCompletion([
+  { role: 'user', content: 'Analyze my medical records: ...' }
+], true);
+
+// Non-sensitive data can use cloud
+await createCompletion([
+  { role: 'user', content: 'What is the capital of France?' }
+], false);
+```
+
+## Detecting Active Backend
+
+Check which model responded:
+
+```typescript
+const completion = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+
+console.log('Model used:', completion.model);
+
+if (completion.model.includes('MLC')) {
+  console.log('Local inference was used');
+} else {
+  console.log('Cloud API was used');
+}
+```
+
+For streaming responses, check the first chunk:
+
+```typescript
+const stream = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  if (chunk.model) {
+    console.log('Backend:', chunk.model);
+    break;  // Model name is in the first chunk
+  }
+}
+```
+
+## Next Steps
+
+- Learn about [Streaming](/guides/streaming) for real-time responses
+- Explore [Model Loading](/guides/model-loading) for progressive loading strategies
+- See [Device Capability](/guides/device-capability) to check device compatibility

@@ -1,0 +1,117 @@
+---
+title: Abort Requests
+description: Cancel in-flight inference requests using AbortSignal.
+---
+
+WebLLM SDK supports request cancellation via the standard `AbortController` / `AbortSignal` pattern. This works for both local and cloud inference.
+
+## Basic Usage
+
+```ts
+const controller = new AbortController();
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+
+try {
+  const res = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Write a long essay about AI' }],
+    signal: controller.signal,
+  });
+} catch (err) {
+  if (err.code === 'ABORTED') {
+    console.log('Request was cancelled');
+  }
+}
+```
+
+## Aborting Streams
+
+Abort works naturally with streaming:
+
+```ts
+const controller = new AbortController();
+
+const stream = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Tell me a story' }],
+  stream: true,
+  signal: controller.signal,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
+
+  // Cancel mid-stream based on some condition
+  if (shouldStop()) {
+    controller.abort();
+    break;
+  }
+}
+```
+
+## How It Works
+
+The abort mechanism differs by backend:
+
+| Backend | Mechanism |
+|---|---|
+| **Local (MLC)** | Calls `interruptGenerate()` on the MLC engine to stop token generation |
+| **Cloud (fetchSSE)** | Passes the `AbortSignal` to the underlying `fetch()` call |
+
+In both cases, the SDK throws a `WebLLMError` with code `'ABORTED'`.
+
+## Error Handling
+
+Aborted requests throw a `WebLLMError` with a specific error code:
+
+```ts
+import { WebLLMError } from '@webllm-io/sdk';
+
+try {
+  const res = await client.chat.completions.create({
+    messages: [...],
+    signal: controller.signal,
+  });
+} catch (err) {
+  if (err instanceof WebLLMError && err.code === 'ABORTED') {
+    // User cancelled — not a real error
+    return;
+  }
+  // Handle actual errors
+  throw err;
+}
+```
+
+## Fallback Behavior
+
+When a request is aborted, the SDK does **not** attempt a fallback to the other backend. This is intentional — if the user cancelled, they don't want the request to continue on a different provider.
+
+## UI Pattern: Stop Button
+
+A common pattern for chat UIs:
+
+```ts
+let activeController: AbortController | null = null;
+
+async function sendMessage(content: string) {
+  // Cancel any in-flight request
+  activeController?.abort();
+  activeController = new AbortController();
+
+  const stream = client.chat.completions.create({
+    messages: [{ role: 'user', content }],
+    stream: true,
+    signal: activeController.signal,
+  });
+
+  for await (const chunk of stream) {
+    appendToUI(chunk.choices[0]?.delta?.content ?? '');
+  }
+
+  activeController = null;
+}
+
+function stopGeneration() {
+  activeController?.abort();
+}
+```

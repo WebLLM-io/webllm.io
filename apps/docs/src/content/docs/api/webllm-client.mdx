@@ -1,0 +1,215 @@
+---
+title: "WebLLMClient"
+description: "Client interface for managing local and cloud inference, model lifecycle, and device capabilities"
+---
+
+The main client interface returned by [`createClient()`](/api/create-client). Provides chat completions API, local model management, capability detection, and resource cleanup.
+
+## Interface
+
+```ts
+interface WebLLMClient {
+  chat: { completions: Completions; };
+  local: {
+    load(modelId: string): Promise<void>;
+    unload(): Promise<void>;
+    isLoaded(): boolean;
+  };
+  capability(): Promise<CapabilityReport>;
+  dispose(): Promise<void>;
+}
+```
+
+## Properties
+
+### `chat.completions`
+
+Chat completions API for inference with automatic local/cloud routing.
+
+- Type: [`Completions`](/api/chat-completions)
+- Methods:
+  - `create()` - Generate text completions (streaming or non-streaming)
+
+See [Chat Completions API](/api/chat-completions) for detailed documentation.
+
+## Methods
+
+### `local.load(modelId)`
+
+Explicitly loads a local MLC model into memory. Useful for preloading models before inference.
+
+**Parameters:**
+- `modelId` (string) - MLC model identifier (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`)
+
+**Returns:** `Promise<void>`
+
+**Throws:** `WebLLMError` with code `MODEL_LOAD_FAILED` if loading fails
+
+**Example:**
+
+```ts
+await client.local.load('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+console.log('Model preloaded');
+```
+
+### `local.unload()`
+
+Unloads the currently loaded local model and frees GPU memory.
+
+**Returns:** `Promise<void>`
+
+**Example:**
+
+```ts
+await client.local.unload();
+console.log('Model unloaded, GPU memory freed');
+```
+
+### `local.isLoaded()`
+
+Checks if a local model is currently loaded in memory.
+
+**Returns:** `boolean` - `true` if a model is loaded, `false` otherwise
+
+**Example:**
+
+```ts
+if (client.local.isLoaded()) {
+  console.log('Model ready for inference');
+} else {
+  console.log('No model loaded');
+}
+```
+
+### `capability()`
+
+Detects device capabilities including WebGPU support, GPU info, VRAM, device grade, and system resources.
+
+**Returns:** `Promise<CapabilityReport>`
+
+See [`checkCapability()`](/api/check-capability) for detailed report format.
+
+**Example:**
+
+```ts
+const report = await client.capability();
+console.log(`Device grade: ${report.grade}`);
+console.log(`VRAM: ${report.gpu?.vram}MB`);
+console.log(`WebGPU: ${report.webgpu ? 'Available' : 'Not available'}`);
+```
+
+### `dispose()`
+
+Cleans up all resources including loaded models, workers, and GPU memory. Call this when the client is no longer needed.
+
+**Returns:** `Promise<void>`
+
+**Example:**
+
+```ts
+await client.dispose();
+console.log('Client disposed, all resources freed');
+```
+
+## Usage Examples
+
+### Basic chat with automatic routing
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto',
+  cloud: process.env.OPENAI_API_KEY
+});
+
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### Preload model before inference
+
+```ts
+const client = createClient();
+
+// Preload model
+await client.local.load('Qwen2.5-3B-Instruct-q4f16_1-MLC');
+
+// Model is already loaded, inference starts immediately
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'What is 2+2?' }],
+  provider: 'local'
+});
+```
+
+### Check capabilities and adapt
+
+```ts
+const client = createClient({
+  local: 'auto',
+  cloud: process.env.OPENAI_API_KEY
+});
+
+const cap = await client.capability();
+
+if (cap.grade === 'S' || cap.grade === 'A') {
+  console.log('High-end device, using local inference');
+  await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Complex task...' }],
+    provider: 'local'
+  });
+} else {
+  console.log('Low-end device, using cloud fallback');
+  await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Complex task...' }],
+    provider: 'cloud'
+  });
+}
+```
+
+### Resource cleanup on unmount
+
+```ts
+// React example
+useEffect(() => {
+  const client = createClient();
+
+  return () => {
+    client.dispose();
+  };
+}, []);
+```
+
+### Manual model switching
+
+```ts
+const client = createClient();
+
+// Load first model
+await client.local.load('Qwen2.5-1.5B-Instruct-q4f16_1-MLC');
+const response1 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Quick question' }],
+  provider: 'local'
+});
+
+// Switch to larger model
+await client.local.unload();
+await client.local.load('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+const response2 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Complex reasoning task' }],
+  provider: 'local'
+});
+
+// Cleanup
+await client.dispose();
+```
+
+## See Also
+
+- [createClient()](/api/create-client) - Create client instances
+- [Chat Completions](/api/chat-completions) - Inference API
+- [checkCapability()](/api/check-capability) - Device detection
+- [Errors](/api/errors) - Error handling

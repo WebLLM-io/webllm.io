@@ -1,0 +1,437 @@
+---
+title: "Cache Management"
+description: "Functions for managing local model cache in OPFS storage"
+---
+
+WebLLM.io provides two utilities for managing the local model cache stored in OPFS (Origin Private File System). These functions delegate to `@mlc-ai/web-llm`'s cache management system and are only available when the MLC peer dependency is installed.
+
+## Functions
+
+### `hasModelInCache()`
+
+Check if a specific model is cached in OPFS.
+
+#### Signature
+
+```ts
+async function hasModelInCache(modelId: string): Promise<boolean>;
+```
+
+#### Parameters
+
+- `modelId` - MLC model identifier (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`)
+
+#### Return Value
+
+- Returns `true` if the model is fully cached in OPFS
+- Returns `false` if:
+  - The model is not cached
+  - The model is partially cached (incomplete download)
+  - `@mlc-ai/web-llm` is not installed
+
+#### Examples
+
+```ts
+import { hasModelInCache } from '@webllm-io/sdk';
+
+// Check if model is cached before loading
+const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+const isCached = await hasModelInCache(modelId);
+
+if (isCached) {
+  console.log('Model is cached, loading will be fast');
+} else {
+  console.log('Model will be downloaded (~4-8GB)');
+}
+```
+
+```ts
+// Show cache status in UI
+async function updateCacheStatus() {
+  const models = [
+    'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+  ];
+
+  for (const model of models) {
+    const cached = await hasModelInCache(model);
+    console.log(`${model}: ${cached ? '✓ Cached' : '✗ Not cached'}`);
+  }
+}
+```
+
+### `deleteModelFromCache()`
+
+Remove a specific model from OPFS cache to free up storage.
+
+#### Signature
+
+```ts
+async function deleteModelFromCache(modelId: string): Promise<void>;
+```
+
+#### Parameters
+
+- `modelId` - MLC model identifier to delete
+
+#### Return Value
+
+Returns a Promise that resolves when deletion completes.
+
+#### Errors
+
+- Throws if `@mlc-ai/web-llm` is not installed
+- Throws if OPFS access fails (e.g., browser doesn't support OPFS)
+- Silently succeeds if model is not cached
+
+#### Examples
+
+```ts
+import { deleteModelFromCache } from '@webllm-io/sdk';
+
+// Delete a specific model
+await deleteModelFromCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+console.log('Model deleted from cache');
+```
+
+```ts
+// Clear all cached models
+async function clearAllCachedModels() {
+  const models = [
+    'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+  ];
+
+  for (const model of models) {
+    try {
+      await deleteModelFromCache(model);
+      console.log(`Deleted: ${model}`);
+    } catch (error) {
+      console.error(`Failed to delete ${model}:`, error);
+    }
+  }
+}
+```
+
+## Complete Examples
+
+### Preload check with user confirmation
+
+```ts
+import { hasModelInCache, createClient } from '@webllm-io/sdk';
+
+async function initializeWithCacheCheck() {
+  const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+  const isCached = await hasModelInCache(modelId);
+
+  if (!isCached) {
+    const confirmed = confirm(
+      `Model not cached. Download ~6GB?\n\nThis may take several minutes.`
+    );
+
+    if (!confirmed) {
+      console.log('User cancelled download');
+      return null;
+    }
+  }
+
+  const client = createClient({
+    local: { model: modelId },
+    onProgress: (progress) => {
+      console.log(`${progress.stage}: ${Math.round(progress.progress * 100)}%`);
+    }
+  });
+
+  await client.init();
+  return client;
+}
+```
+
+### Cache size estimation
+
+```ts
+import { hasModelInCache } from '@webllm-io/sdk';
+
+async function estimateCacheSize() {
+  const modelSizes = {
+    'Llama-3.1-8B-Instruct-q4f16_1-MLC': 6000, // ~6GB
+    'Qwen2.5-3B-Instruct-q4f16_1-MLC': 3000,   // ~3GB
+    'Qwen2.5-1.5B-Instruct-q4f16_1-MLC': 1500  // ~1.5GB
+  };
+
+  let totalSize = 0;
+
+  for (const [model, size] of Object.entries(modelSizes)) {
+    const cached = await hasModelInCache(model);
+    if (cached) {
+      totalSize += size;
+      console.log(`${model}: ${size}MB`);
+    }
+  }
+
+  console.log(`Total cache size: ~${totalSize}MB`);
+  return totalSize;
+}
+```
+
+### Selective cache cleanup
+
+```ts
+import { hasModelInCache, deleteModelFromCache } from '@webllm-io/sdk';
+
+async function cleanupOldModels(keepModel: string) {
+  const allModels = [
+    'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+  ];
+
+  for (const model of allModels) {
+    if (model === keepModel) continue;
+
+    const cached = await hasModelInCache(model);
+    if (cached) {
+      await deleteModelFromCache(model);
+      console.log(`Deleted: ${model}`);
+    }
+  }
+}
+
+// Keep only the 1.5B model, delete others
+await cleanupOldModels('Qwen2.5-1.5B-Instruct-q4f16_1-MLC');
+```
+
+### Cache status dashboard
+
+```tsx
+import { hasModelInCache, deleteModelFromCache } from '@webllm-io/sdk';
+import { useState, useEffect } from 'react';
+
+interface CacheEntry {
+  model: string;
+  cached: boolean;
+  size: number;
+}
+
+function CacheDashboard() {
+  const [entries, setEntries] = useState<CacheEntry[]>([]);
+
+  useEffect(() => {
+    loadCacheStatus();
+  }, []);
+
+  async function loadCacheStatus() {
+    const models = [
+      { model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC', size: 6000 },
+      { model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', size: 3000 },
+      { model: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', size: 1500 }
+    ];
+
+    const results = await Promise.all(
+      models.map(async ({ model, size }) => ({
+        model,
+        size,
+        cached: await hasModelInCache(model)
+      }))
+    );
+
+    setEntries(results);
+  }
+
+  async function handleDelete(model: string) {
+    await deleteModelFromCache(model);
+    await loadCacheStatus(); // Refresh
+  }
+
+  return (
+    <div>
+      <h2>Model Cache</h2>
+      <ul>
+        {entries.map((entry) => (
+          <li key={entry.model}>
+            <span>{entry.model}</span>
+            <span>{entry.cached ? '✓ Cached' : '✗ Not cached'}</span>
+            <span>{entry.size}MB</span>
+            {entry.cached && (
+              <button onClick={() => handleDelete(entry.model)}>
+                Delete
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p>
+        Total: {entries.filter((e) => e.cached).reduce((sum, e) => sum + e.size, 0)}MB
+      </p>
+    </div>
+  );
+}
+```
+
+### Switch models with cleanup
+
+```ts
+import { hasModelInCache, deleteModelFromCache, createClient } from '@webllm-io/sdk';
+
+async function switchModel(
+  currentClient: WebLLMClient | null,
+  newModelId: string
+) {
+  // Dispose current client
+  if (currentClient) {
+    await currentClient.dispose();
+  }
+
+  // Check if new model is cached
+  const isCached = await hasModelInCache(newModelId);
+
+  if (!isCached) {
+    console.log(`Downloading ${newModelId}...`);
+  }
+
+  // Create new client with new model
+  const newClient = createClient({
+    local: { model: newModelId },
+    onProgress: (progress) => {
+      console.log(`Loading: ${Math.round(progress.progress * 100)}%`);
+    }
+  });
+
+  await newClient.init();
+  return newClient;
+}
+
+// Usage
+let client = await switchModel(null, 'Llama-3.1-8B-Instruct-q4f16_1-MLC');
+
+// Later: switch to smaller model and delete old one
+const oldModel = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+client = await switchModel(client, 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC');
+await deleteModelFromCache(oldModel);
+```
+
+### Conditional cache preloading
+
+```ts
+import { hasModelInCache, checkCapability, createClient } from '@webllm-io/sdk';
+
+async function smartInitialize() {
+  const cap = await checkCapability();
+
+  // Determine best model for device
+  let modelId: string;
+  switch (cap.grade) {
+    case 'S':
+      modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+      break;
+    case 'A':
+      modelId = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+      break;
+    default:
+      modelId = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+  }
+
+  // Check cache status
+  const isCached = await hasModelInCache(modelId);
+
+  // Decide whether to use local or cloud
+  const useLocal = isCached || cap.connection.effectiveType === '4g';
+
+  const client = createClient({
+    local: useLocal ? { model: modelId } : false,
+    cloud: !useLocal ? process.env.OPENAI_API_KEY : undefined
+  });
+
+  return client;
+}
+```
+
+## Browser Compatibility
+
+Both functions require:
+
+- **OPFS support** - Chrome 102+, Edge 102+, Safari 15.2+
+- **`@mlc-ai/web-llm`** installed as a peer dependency
+
+If `@mlc-ai/web-llm` is not installed:
+- `hasModelInCache()` returns `false`
+- `deleteModelFromCache()` throws an error
+
+## Storage Considerations
+
+### OPFS Storage Limits
+
+- **Chrome/Edge:** ~60% of available disk space
+- **Firefox:** ~50% of available disk space
+- **Safari:** ~1GB default, can request more
+
+Check available storage:
+
+```ts
+if ('storage' in navigator && 'estimate' in navigator.storage) {
+  const estimate = await navigator.storage.estimate();
+  console.log(`Used: ${estimate.usage}MB`);
+  console.log(`Available: ${estimate.quota}MB`);
+}
+```
+
+### Model Sizes
+
+Typical MLC model sizes:
+
+- Llama-3.1-8B (q4f16_1): ~6GB
+- Qwen2.5-3B (q4f16_1): ~3GB
+- Qwen2.5-1.5B (q4f16_1): ~1.5GB
+- Phi-3.5-mini (q4f16_1): ~2.5GB
+
+Plan storage usage accordingly.
+
+## Implementation Notes
+
+### Delegation to @mlc-ai/web-llm
+
+Both functions are thin wrappers around `@mlc-ai/web-llm` APIs:
+
+```ts
+import * as webllm from '@mlc-ai/web-llm';
+
+async function hasModelInCache(modelId: string): Promise<boolean> {
+  try {
+    return await webllm.hasModelInCache(modelId);
+  } catch {
+    return false; // If web-llm not installed
+  }
+}
+
+async function deleteModelFromCache(modelId: string): Promise<void> {
+  return await webllm.deleteModelAllInfoInCache(modelId);
+}
+```
+
+### When to Use
+
+**Use `hasModelInCache()` when:**
+- Showing cache status in UI
+- Deciding whether to download a model
+- Estimating load time
+- Preloading models in the background
+
+**Use `deleteModelFromCache()` when:**
+- User explicitly requests cache cleanup
+- Freeing storage for new models
+- Implementing cache eviction policies
+- Resetting application state
+
+**Do NOT use for:**
+- Automatic cache invalidation (models don't expire)
+- Performance optimization (cache management is already optimized)
+- Detecting model updates (MLC models are immutable)
+
+## See Also
+
+- [createClient()](/api/create-client) - Client initialization with cache options
+- [Config Types](/api/config-types) - `useCache` configuration
+- [WebLLMClient](/api/webllm-client) - Client interface
+- [Local Inference Guide](/guides/local-inference) - OPFS cache usage

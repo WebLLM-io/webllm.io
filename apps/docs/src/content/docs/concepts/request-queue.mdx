@@ -1,0 +1,395 @@
+---
+title: "Request Queue"
+description: "Serializing concurrent requests for single-threaded MLC inference engine"
+---
+
+The MLC inference engine underlying WebLLM.io's local backend is single-threaded. It can only process one inference request at a time. To handle concurrent requests safely, the SDK implements a `RequestQueue` that serializes requests in FIFO (first-in, first-out) order.
+
+## The Single-Threading Constraint
+
+Unlike cloud APIs that can handle parallel requests, WebGPU-based inference engines run on a single execution thread:
+
+```
+Cloud API (Parallel)              Local MLC Engine (Serial)
+────────────────────              ─────────────────────────
+Request 1 ──────→ Response 1      Request 1 ──→ Response 1
+Request 2 ──────→ Response 2                       ↓
+Request 3 ──────→ Response 3      Request 2 ──→ Response 2
+                                                   ↓
+(All process simultaneously)      Request 3 ──→ Response 3
+
+                                  (One at a time)
+```
+
+**Why single-threaded?**
+- WebGPU contexts are not thread-safe
+- Model weights are loaded into GPU memory once
+- Inference uses mutable state (KV cache, attention heads)
+
+Attempting concurrent inference would cause:
+- Race conditions in GPU memory access
+- Corrupted KV cache state
+- Incorrect or garbled output
+- Potential crashes
+
+## RequestQueue Architecture
+
+The `RequestQueue` solves this by serializing requests:
+
+```
+Application Layer (Multiple concurrent calls)
+    ↓
+chat.completions.create() × 3
+    ↓
+┌─────────────────────────────────────┐
+│          RequestQueue               │
+│                                     │
+│  ┌─────┐  ┌─────┐  ┌─────┐        │
+│  │ Req │→ │ Req │→ │ Req │  FIFO  │
+│  │  1  │  │  2  │  │  3  │  Queue │
+│  └─────┘  └─────┘  └─────┘        │
+└─────────────────────────────────────┘
+    ↓ (dequeue one at a time)
+MLCEngine.generate()
+    ↓
+Response chunks
+```
+
+### How It Works
+
+1. **Request arrives** at `chat.completions.create()`
+2. **Enqueued** into the RequestQueue
+3. **Queue checks** if engine is idle
+   - If idle: dequeue and start inference immediately
+   - If busy: wait until current request completes
+4. **Inference runs** on the MLC engine
+5. **Streaming chunks** are yielded back to caller
+6. **Request completes**, queue dequeues next request
+7. **Repeat** until queue is empty
+
+## Code Example
+
+### Without Queue (Incorrect)
+
+This code would fail or produce corrupted results:
+
+```typescript
+// ❌ WRONG: Direct concurrent calls to MLC engine
+const engine = await CreateMLCEngine(/* ... */)
+
+// These requests race and corrupt each other
+const response1 = engine.chat.completions.create({ messages: [/* ... */] })
+const response2 = engine.chat.completions.create({ messages: [/* ... */] })
+const response3 = engine.chat.completions.create({ messages: [/* ... */] })
+```
+
+### With Queue (Correct)
+
+WebLLM.io's internal queue handles serialization automatically:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+
+const client = createClient({ local: 'auto' })
+
+// ✅ CORRECT: Queue automatically serializes these
+const [response1, response2, response3] = await Promise.all([
+  client.chat.completions.create({ messages: [{ role: 'user', content: 'Query 1' }] }),
+  client.chat.completions.create({ messages: [{ role: 'user', content: 'Query 2' }] }),
+  client.chat.completions.create({ messages: [{ role: 'user', content: 'Query 3' }] })
+])
+
+// Requests execute in order: 1 → 2 → 3
+// Each waits for the previous to complete
+```
+
+## Queue Behavior
+
+### FIFO Ordering
+
+Requests are processed in the order they arrive:
+
+```typescript
+console.log('Starting 3 requests...')
+
+// Request 1 starts immediately
+const promise1 = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'First' }]
+})
+
+// Request 2 queued, waits for #1
+const promise2 = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Second' }]
+})
+
+// Request 3 queued, waits for #2
+const promise3 = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Third' }]
+})
+
+// Output order is guaranteed: First → Second → Third
+```
+
+### Streaming and Queue
+
+Streaming requests hold the queue until completion:
+
+```typescript
+// Request 1: streaming (holds queue for entire duration)
+const stream1 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write an essay' }],
+  stream: true
+})
+
+// Request 2: waits until stream1 is fully consumed
+const stream2 = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Another query' }],
+  stream: true
+})
+
+// Consume stream1 chunks
+for await (const chunk of stream1) {
+  console.log(chunk.choices[0]?.delta?.content)
+}
+// Only after stream1 completes does stream2 start
+```
+
+### Abort and Queue
+
+Aborting a request releases the queue immediately:
+
+```typescript
+const controller = new AbortController()
+
+// Request 1: starts immediately
+const promise1 = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Long response' }],
+  signal: controller.signal
+})
+
+// Request 2: queued
+const promise2 = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Quick query' }]
+})
+
+// Abort request 1 after 1 second
+setTimeout(() => controller.abort(), 1000)
+
+// Request 2 starts immediately after abort
+```
+
+## Performance Implications
+
+### Queueing Latency
+
+If multiple requests arrive simultaneously, later requests experience queueing delay:
+
+```
+Request 1: 0s wait + 5s inference = 5s total
+Request 2: 5s wait + 3s inference = 8s total
+Request 3: 8s wait + 4s inference = 12s total
+```
+
+**Mitigation strategies:**
+1. Batch related queries into a single request
+2. Use cloud backend for parallel requests
+3. Show queueing status in UI
+
+### Batching Example
+
+Instead of multiple requests:
+
+```typescript
+// ❌ Slow: 3 sequential requests
+const joke = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Tell me a joke' }]
+})
+const fact = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Tell me a fact' }]
+})
+const poem = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Write a haiku' }]
+})
+```
+
+Combine into one:
+
+```typescript
+// ✅ Fast: Single request
+const response = await client.chat.completions.create({
+  messages: [{
+    role: 'user',
+    content: `Please provide three things:
+1. A joke
+2. An interesting fact
+3. A haiku`
+  }]
+})
+```
+
+## Multi-User Scenarios
+
+For apps with multiple concurrent users, the queue ensures fair access:
+
+```typescript
+// User A sends a message
+userA.sendMessage('Hello') // Request 1, starts immediately
+
+// User B sends a message (queued)
+userB.sendMessage('Hi there') // Request 2, waits
+
+// User C sends a message (queued)
+userC.sendMessage('What is AI?') // Request 3, waits
+
+// Execution order: A → B → C
+```
+
+### Queue Status UI
+
+Show users their position in queue:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+
+const client = createClient({ local: 'auto' })
+
+// Hypothetical queue status API (not currently exposed)
+client.on('queueStatus', ({ position, length }) => {
+  if (position > 0) {
+    showNotification(`Your request is #${position} in queue`)
+  }
+})
+```
+
+## Queue vs Cloud Parallelism
+
+Consider using cloud backend for truly parallel workloads:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY
+  }
+})
+
+// For single-user sequential chat, local is fine
+await client.chat.completions.create({ messages: [/* ... */] })
+
+// For bulk parallel processing, force cloud mode
+const summaries = await Promise.all(
+  documents.map(doc =>
+    client.chat.completions.create({
+      messages: [{ role: 'user', content: `Summarize: ${doc}` }],
+      // Force cloud for parallel execution
+      __forceBackend: 'cloud'
+    })
+  )
+)
+```
+
+## Queue Internals
+
+### Implementation Pseudocode
+
+```typescript
+class RequestQueue {
+  private queue: Request[] = []
+  private processing = false
+
+  async enqueue(request: Request): Promise<Response> {
+    this.queue.push(request)
+
+    if (!this.processing) {
+      this.processNext()
+    }
+
+    return request.promise
+  }
+
+  private async processNext() {
+    if (this.queue.length === 0) {
+      this.processing = false
+      return
+    }
+
+    this.processing = true
+    const request = this.queue.shift()!
+
+    try {
+      const response = await this.executeOnEngine(request)
+      request.resolve(response)
+    } catch (error) {
+      request.reject(error)
+    }
+
+    // Process next request
+    this.processNext()
+  }
+
+  private async executeOnEngine(request: Request): Promise<Response> {
+    // Actual MLC engine inference
+    return await mlcEngine.chat.completions.create(request.params)
+  }
+}
+```
+
+### Thread Safety
+
+The queue itself runs on the JavaScript main thread (or worker thread if using `useWorker: true`). JavaScript's single-threaded execution model ensures the queue's own operations are atomic.
+
+## Best Practices
+
+### 1. Avoid Unnecessary Concurrent Requests
+
+If requests are sequential, use `await`:
+
+```typescript
+// ❌ Unnecessarily concurrent
+const promises = messages.map(msg =>
+  client.chat.completions.create({ messages: [{ role: 'user', content: msg }] })
+)
+await Promise.all(promises)
+
+// ✅ Sequential is clearer and has same result
+for (const msg of messages) {
+  await client.chat.completions.create({
+    messages: [{ role: 'user', content: msg }]
+  })
+}
+```
+
+### 2. Batch Related Queries
+
+Combine multiple questions into one prompt when possible.
+
+### 3. Use Abort Signals for User Cancellations
+
+Allow users to cancel queued requests:
+
+```typescript
+const controller = new AbortController()
+
+const responsePromise = client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Long task' }],
+  signal: controller.signal
+})
+
+// User clicks "Cancel"
+cancelButton.onclick = () => controller.abort()
+```
+
+### 4. Show Queue Status
+
+Inform users when requests are queued, especially in multi-user apps.
+
+### 5. Consider Cloud for Parallel Workloads
+
+If you need true parallelism (e.g., batch document processing), use cloud backend.
+
+## Next Steps
+
+- Learn about [Architecture](/concepts/architecture) for overall system design
+- Understand [Provider Composition](/concepts/provider-composition) for backend selection
+- Explore [Three-Level API](/concepts/three-level-api) for configuration patterns

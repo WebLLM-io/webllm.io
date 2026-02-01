@@ -1,0 +1,336 @@
+---
+title: "Three-Level API"
+description: "Progressive configuration from zero-config to full control"
+---
+
+WebLLM.io provides three levels of API complexity, allowing you to start simple and progressively opt into more control as your needs evolve. Each level builds on the previous one, providing a smooth learning curve.
+
+## API Levels Overview
+
+```
+Level 1: Zero Config
+  ↓  (add device-specific model tiers)
+Level 2: Responsive
+  ↓  (add explicit provider functions)
+Level 3: Full Control
+```
+
+## Level 1: Zero Config
+
+**When to use:** Prototyping, simple demos, or when you trust the SDK's defaults.
+
+The simplest possible configuration. Just specify `'auto'` for local inference:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+
+const client = createClient({
+  local: 'auto'
+})
+
+// That's it! The SDK handles everything:
+// - WebGPU detection
+// - VRAM estimation
+// - Device scoring
+// - Model selection
+// - Progressive loading
+```
+
+### What Happens Automatically
+
+1. **Hardware Detection**
+   - Checks if WebGPU is available
+   - Reads `maxStorageBufferBindingSize` to estimate VRAM
+   - Assigns device grade (S/A/B/C)
+
+2. **Model Selection**
+   - **S grade (≥8GB):** `Llama-3.1-8B-Instruct-q4f16_1-MLC`
+   - **A grade (≥4GB):** `Llama-3.1-8B-Instruct-q4f16_1-MLC`
+   - **B grade (≥2GB):** `Phi-3.5-mini-instruct-q4f16_1-MLC`
+   - **C grade (&lt;2GB):** `Qwen2.5-1.5B-Instruct-q4f16_1-MLC`
+
+3. **Worker Initialization**
+   - Spawns Web Worker for non-blocking inference
+   - Configures OPFS cache by default
+
+4. **Fallback Strategy**
+   - If local inference unavailable, falls back to cloud (if configured)
+   - Transparent error recovery
+
+### Zero Config with Cloud Fallback
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+})
+```
+
+Now the SDK will:
+- Try local inference first (auto-selected model)
+- Fall back to `gpt-4o-mini` if local fails or is unavailable
+
+## Level 2: Responsive
+
+**When to use:** Production apps targeting diverse devices (desktop, tablet, mobile) with different hardware capabilities.
+
+Responsive configuration lets you define model tiers for different device grades while still letting the SDK handle detection and selection:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',      // S/A grade
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',    // B grade
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'        // C grade
+    }
+  },
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+})
+```
+
+### Tier Mapping
+
+The SDK maps device grades to tiers:
+
+| Device Grade | VRAM Range | Selected Tier |
+|--------------|------------|---------------|
+| S            | ≥8GB       | `high`        |
+| A            | ≥4GB       | `high`        |
+| B            | ≥2GB       | `medium`      |
+| C            | &lt;2GB       | `low`         |
+
+### Additional Configuration Options
+
+You can customize more aspects at this level:
+
+```typescript
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+    },
+    useWorker: true,    // Run in Web Worker (default: true)
+    useCache: true,     // Enable OPFS cache (default: true)
+  },
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini',
+    timeout: 30000,     // Request timeout in ms
+    maxRetries: 2       // Retry count for network failures
+  }
+})
+```
+
+### When to Use Responsive Config
+
+Responsive configuration is ideal when:
+- Your app targets multiple device types (desktop, tablet, mobile)
+- You want to optimize for quality on high-end devices
+- You need fast inference on low-end devices
+- You want automatic device-appropriate model selection
+- You still want the SDK to handle hardware detection
+
+## Level 3: Full Control
+
+**When to use:** Advanced use cases requiring explicit control over providers, custom model selection, or integration with non-standard backends.
+
+Full control configuration uses explicit provider functions:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+import { mlc } from '@webllm-io/sdk/providers/mlc'
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch'
+
+const client = createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWorker: true,
+    useCache: false,  // Disable cache for always-fresh downloads
+    workerUrl: '/custom-worker.js',  // Custom worker script
+    initProgressCallback: (progress) => {
+      console.log(`Loading: ${progress.text}`)
+    }
+  }),
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini',
+    headers: {
+      'X-Custom-Header': 'value'
+    },
+    fetch: customFetchImpl  // Custom fetch implementation
+  })
+})
+```
+
+### Provider Functions
+
+#### mlc() Provider
+
+The `mlc()` provider wraps `@mlc-ai/web-llm` for local inference:
+
+```typescript
+import { mlc } from '@webllm-io/sdk/providers/mlc'
+
+const localProvider = mlc({
+  model: string,                    // Required: MLC model ID
+  useWorker?: boolean,              // Default: true
+  useCache?: boolean,               // Default: true
+  workerUrl?: string,               // Custom worker script
+  initProgressCallback?: (report) => void,
+  logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+})
+```
+
+#### fetchSSE() Provider
+
+The `fetchSSE()` provider implements OpenAI-compatible streaming:
+
+```typescript
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch'
+
+const cloudProvider = fetchSSE({
+  baseURL: string,                  // Required: API endpoint
+  apiKey?: string,                  // Authentication key
+  model?: string,                   // Default model
+  timeout?: number,                 // Request timeout (ms)
+  maxRetries?: number,              // Retry count
+  headers?: Record<string, string>, // Custom headers
+  fetch?: typeof fetch              // Custom fetch impl
+})
+```
+
+### Custom Provider Function
+
+You can implement custom providers for non-standard backends:
+
+```typescript
+import { CloudFn } from '@webllm-io/sdk'
+
+const customCloudProvider: CloudFn = async ({ messages, options }) => {
+  // Custom implementation
+  const response = await fetch('https://my-api.com/chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages, ...options })
+  })
+
+  // Return AsyncIterable<string> for streaming
+  return {
+    async *[Symbol.asyncIterator]() {
+      const reader = response.body.getReader()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        yield new TextDecoder().decode(value)
+      }
+    }
+  }
+}
+
+const client = createClient({
+  cloud: customCloudProvider
+})
+```
+
+### Disabling Local or Cloud
+
+You can explicitly disable one engine:
+
+```typescript
+// Cloud-only (no local inference)
+const client = createClient({
+  local: false,
+  cloud: fetchSSE({ /* ... */ })
+})
+
+// Local-only (no cloud fallback)
+const client = createClient({
+  local: mlc({ /* ... */ }),
+  cloud: false
+})
+```
+
+### When to Use Full Control
+
+Full control configuration is necessary when:
+- You need a specific model regardless of device grade
+- You're integrating with a custom or self-hosted backend
+- You want to disable caching for development
+- You need custom progress callbacks or logging
+- You're implementing a non-standard provider
+- You want to benchmark different configurations
+
+## Choosing the Right Level
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Use Case                           → Recommended Level   │
+├─────────────────────────────────────────────────────────┤
+│ Quick prototype                    → Zero Config         │
+│ Simple demo                        → Zero Config         │
+│ Multi-device production app        → Responsive          │
+│ Device-specific optimization       → Responsive          │
+│ Custom backend integration         → Full Control        │
+│ Specific model requirement         → Full Control        │
+│ Advanced debugging                 → Full Control        │
+│ Non-standard provider              → Full Control        │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Migration Path
+
+You can smoothly migrate between levels as your needs evolve:
+
+### From Zero Config to Responsive
+
+```typescript
+// Before (Zero Config)
+const client = createClient({ local: 'auto' })
+
+// After (Responsive)
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+    }
+  }
+})
+```
+
+### From Responsive to Full Control
+
+```typescript
+// Before (Responsive)
+const client = createClient({
+  local: {
+    tiers: { high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC' }
+  }
+})
+
+// After (Full Control)
+const client = createClient({
+  local: mlc({ model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC' })
+})
+```
+
+## Next Steps
+
+- Learn about [Device Scoring](/concepts/device-scoring) for tier selection
+- Understand [Provider Composition](/concepts/provider-composition) patterns
+- Explore the [Request Queue](/concepts/request-queue) for concurrent requests

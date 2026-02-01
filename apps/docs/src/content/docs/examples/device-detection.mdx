@@ -1,0 +1,307 @@
+---
+title: "Device Detection"
+description: "Detect device capabilities and optimize experience based on hardware"
+---
+
+Use device detection to provide the best experience for each user based on their hardware capabilities.
+
+## Basic Capability Check
+
+```typescript
+import { checkCapability } from '@webllm-io/sdk';
+
+const capability = await checkCapability();
+
+console.log('WebGPU available:', capability.webgpu);
+console.log('Device grade:', capability.grade);
+console.log('Estimated VRAM:', capability.vramGB, 'GB');
+console.log('GPU info:', capability.gpu);
+```
+
+## Capability Object Structure
+
+```typescript
+{
+  webgpu: true,           // WebGPU API available
+  grade: 'A',             // Device grade: S, A, B, or C
+  vramGB: 8.2,           // Estimated VRAM in GB
+  gpu: {
+    vendor: 'Apple',
+    architecture: 'M1',
+    maxStorageBufferBindingSize: 8589934592
+  }
+}
+```
+
+## Device Grades
+
+WebLLM.io assigns grades based on `maxStorageBufferBindingSize` (a proxy for VRAM):
+
+| Grade | VRAM Estimate | Recommended Model Size | Example Devices |
+|-------|---------------|------------------------|-----------------|
+| **S** | ≥32GB | High-end models | M3 Max, RTX 4090 |
+| **A** | ≥8GB | Standard models (8B params) | M1 Pro, RTX 3060 |
+| **B** | ≥4GB | Optimized models (4B params) | M1, RTX 2060 |
+| **C** | &lt;4GB | Lightweight models (1.5B params) | Integrated GPUs |
+
+:::note
+All grades support local inference. Grade C devices use lightweight models like Qwen2.5-1.5B-Instruct.
+:::
+
+## Conditional Feature Enabling
+
+```typescript
+import { checkCapability, createClient } from '@webllm-io/sdk';
+
+const capability = await checkCapability();
+
+if (!capability.webgpu) {
+  // WebGPU not available, cloud-only mode
+  console.warn('Local inference not available, using cloud');
+
+  const client = await createClient({
+    cloud: {
+      baseURL: 'https://api.openai.com/v1',
+      apiKey: process.env.OPENAI_API_KEY,
+      model: 'gpt-4o-mini'
+    }
+  });
+} else {
+  // WebGPU available, enable local
+  console.log(`Device grade ${capability.grade} detected`);
+
+  const client = await createClient({
+    local: 'auto'
+  });
+}
+```
+
+## Display Capability Info to Users
+
+```typescript
+import { checkCapability } from '@webllm-io/sdk';
+
+async function displayDeviceInfo() {
+  const cap = await checkCapability();
+
+  const infoElement = document.getElementById('device-info');
+
+  if (!cap.webgpu) {
+    infoElement.innerHTML = `
+      <div class="alert alert-warning">
+        <strong>WebGPU Not Available</strong>
+        <p>Your browser doesn't support WebGPU. Update to Chrome 113+ or Edge 113+.</p>
+        <p>Falling back to cloud mode.</p>
+      </div>
+    `;
+    return;
+  }
+
+  infoElement.innerHTML = `
+    <div class="device-info">
+      <h3>Device Capabilities</h3>
+      <ul>
+        <li><strong>GPU:</strong> ${cap.gpu.vendor} ${cap.gpu.architecture || ''}</li>
+        <li><strong>VRAM:</strong> ~${cap.vramGB.toFixed(1)} GB</li>
+        <li><strong>Grade:</strong> ${cap.grade} (${getGradeDescription(cap.grade)})</li>
+        <li><strong>Local Inference:</strong> ✅ Enabled</li>
+      </ul>
+    </div>
+  `;
+}
+
+function getGradeDescription(grade: string): string {
+  const descriptions = {
+    'S': 'High-end GPU',
+    'A': 'Standard GPU',
+    'B': 'Mid-range GPU',
+    'C': 'Entry-level GPU'
+  };
+  return descriptions[grade] || 'Unknown';
+}
+
+displayDeviceInfo();
+```
+
+## Warn About Large Downloads
+
+```typescript
+import { checkCapability, hasModelInCache } from '@webllm-io/sdk';
+
+async function initializeWithWarning() {
+  const capability = await checkCapability();
+
+  if (!capability.webgpu) {
+    return initCloudMode();
+  }
+
+  // Estimate model size based on grade
+  const modelSizes = {
+    'S': '8GB',
+    'A': '4.5GB',
+    'B': '2.5GB',
+    'C': '1.5GB'
+  };
+
+  const estimatedSize = modelSizes[capability.grade];
+  const modelId = getModelForGrade(capability.grade);
+
+  const isCached = await hasModelInCache(modelId);
+
+  if (!isCached) {
+    const userConfirmed = confirm(
+      `First-time setup will download ~${estimatedSize} of model data. ` +
+      `The model will be cached for future use. Continue?`
+    );
+
+    if (!userConfirmed) {
+      return initCloudMode();
+    }
+  }
+
+  return initLocalMode();
+}
+
+function getModelForGrade(grade: string): string {
+  const models = {
+    'S': 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    'A': 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    'B': 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'C': 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+  };
+  return models[grade] || models['C'];
+}
+```
+
+## Adaptive UI Based on Grade
+
+```typescript
+import { checkCapability, createClient } from '@webllm-io/sdk';
+
+async function initializeApp() {
+  const capability = await checkCapability();
+
+  // Adapt max tokens based on device grade
+  const maxTokensLimits = {
+    'S': 4096,
+    'A': 2048,
+    'B': 1024,
+    'C': 512
+  };
+
+  const maxTokens = maxTokensLimits[capability.grade] || 512;
+
+  // Update UI
+  const tokenSlider = document.getElementById('max-tokens-slider') as HTMLInputElement;
+  tokenSlider.max = maxTokens.toString();
+  tokenSlider.value = Math.min(parseInt(tokenSlider.value), maxTokens).toString();
+
+  document.getElementById('max-tokens-label').textContent =
+    `Max Tokens (up to ${maxTokens} on your device)`;
+
+  // Initialize client
+  const client = await createClient({
+    local: capability.webgpu ? 'auto' : undefined,
+    cloud: {
+      baseURL: 'https://api.openai.com/v1',
+      apiKey: process.env.OPENAI_API_KEY,
+      model: 'gpt-4o-mini'
+    }
+  });
+
+  return { client, maxTokens };
+}
+```
+
+## Browser Compatibility Check
+
+```typescript
+function checkBrowserCompatibility() {
+  const isChrome = /Chrome/.test(navigator.userAgent);
+  const isEdge = /Edg/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+  // Chrome 113+ or Edge 113+ required for WebGPU
+  if (!isChrome && !isEdge && !isSafari) {
+    return {
+      compatible: false,
+      message: 'Please use Chrome 113+, Edge 113+, or Safari 18+ for local inference.'
+    };
+  }
+
+  if (!navigator.gpu) {
+    return {
+      compatible: false,
+      message: 'WebGPU is not available in this browser version.'
+    };
+  }
+
+  return { compatible: true };
+}
+
+const browserCheck = checkBrowserCompatibility();
+if (!browserCheck.compatible) {
+  console.warn(browserCheck.message);
+  // Show upgrade prompt to user
+}
+```
+
+## Complete Detection Example
+
+```typescript
+import { checkCapability, createClient, hasModelInCache } from '@webllm-io/sdk';
+
+async function smartInitialize() {
+  // Step 1: Check WebGPU availability
+  const capability = await checkCapability();
+
+  if (!capability.webgpu) {
+    console.log('WebGPU not available, using cloud-only mode');
+    return await createClient({
+      cloud: {
+        baseURL: 'https://api.openai.com/v1',
+        apiKey: process.env.OPENAI_API_KEY,
+        model: 'gpt-4o-mini'
+      }
+    });
+  }
+
+  // Step 2: Display device info
+  console.log(`Device Grade: ${capability.grade}`);
+  console.log(`Estimated VRAM: ${capability.vramGB.toFixed(1)}GB`);
+  console.log(`GPU: ${capability.gpu.vendor}`);
+
+  // Step 3: Check cache status
+  const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+  const cached = await hasModelInCache(modelId);
+
+  if (!cached) {
+    console.log('Model not cached, will download on first use (~4.5GB)');
+  }
+
+  // Step 4: Initialize with progress tracking
+  const client = await createClient({
+    local: {
+      model: 'auto',
+      onProgress: (report) => {
+        console.log(`[${Math.round(report.progress * 100)}%] ${report.text}`);
+      }
+    },
+    cloud: {
+      baseURL: 'https://api.openai.com/v1',
+      apiKey: process.env.OPENAI_API_KEY,
+      model: 'gpt-4o-mini'
+    }
+  });
+
+  return client;
+}
+
+const client = await smartInitialize();
+```
+
+## Next Steps
+
+- [Local-Only Mode](/examples/local-only) — Configure local inference
+- [Hybrid Mode](/examples/hybrid-mode) — Combine local and cloud with auto-routing
+- [Cache Management](/guides/cache-management) — Manage downloaded models

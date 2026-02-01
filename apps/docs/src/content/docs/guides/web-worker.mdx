@@ -1,0 +1,105 @@
+---
+title: Web Worker
+description: Run local inference in a Web Worker to keep the UI responsive.
+---
+
+By default, WebLLM SDK runs local MLC inference in a Web Worker. This prevents model loading and token generation from blocking the main thread.
+
+## Default Behavior
+
+Worker mode is enabled by default — no configuration needed:
+
+```ts
+const client = createClient({ local: 'auto' });
+// Inference runs in a Web Worker automatically
+```
+
+## Disabling Workers
+
+For debugging or environments without Worker support:
+
+```ts
+const client = createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWebWorker: false, // Run on main thread
+  },
+});
+```
+
+:::caution
+Running inference on the main thread will freeze the UI during model loading and generation. Only disable workers for debugging.
+:::
+
+## Required HTTP Headers
+
+WebGPU in Workers requires `SharedArrayBuffer`, which needs these HTTP headers:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+### Vite Configuration
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  plugins: [
+    {
+      name: 'configure-response-headers',
+      configureServer(server) {
+        server.middlewares.use((_req, res, next) => {
+          res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+          res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+          next();
+        });
+      },
+    },
+  ],
+});
+```
+
+### Next.js Configuration
+
+```js
+// next.config.js
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+        ],
+      },
+    ];
+  },
+};
+```
+
+### Nginx
+
+```nginx
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+add_header Cross-Origin-Embedder-Policy "require-corp" always;
+```
+
+## Worker Entry Point
+
+The SDK provides a dedicated worker entry at `@webllm-io/sdk/worker`. If you need to customize the worker setup, you can reference this entry point directly.
+
+## Troubleshooting
+
+### "SharedArrayBuffer is not defined"
+
+The COOP/COEP headers are missing or incorrect. Check your server configuration.
+
+### "Failed to construct Worker"
+
+Ensure your bundler is configured to handle worker imports. With Vite, workers are supported out of the box. For webpack, you may need `worker-loader` or the built-in worker support in webpack 5.
+
+### Performance
+
+Worker communication adds minimal overhead (typically &lt;1ms per message). The benefits of a non-blocking UI far outweigh this cost, especially during multi-second model loading phases.

@@ -1,0 +1,545 @@
+---
+title: "Provider Composition"
+description: "How configuration values transform into provider functions for local and cloud backends"
+---
+
+WebLLM.io uses a flexible provider composition system that allows you to configure backends using simple strings or objects, while internally converting them to standardized provider functions. This design enables progressive disclosure: start with simple configs and opt into explicit providers when you need more control.
+
+## Configuration to Provider Pipeline
+
+Every backend configuration goes through a resolution pipeline:
+
+```
+User Input                    Resolution               Internal Provider
+──────────────────────────────────────────────────────────────────────────
+'auto'                   →    auto-wrap           →    mlc()
+{ model: 'Llama-3.1' }   →    auto-wrap           →    mlc({ model: '...' })
+mlc({ ... })             →    pass-through        →    mlc({ ... })
+CustomFunction           →    pass-through        →    CustomFunction
+
+string/object                 normalize                 ResolvedProvider
+(Plain Config)                                          (Provider Function)
+```
+
+## Local Provider Resolution
+
+### String Inputs
+
+String inputs are shorthand for common configurations:
+
+```typescript
+import { createClient } from '@webllm-io/sdk'
+
+// Input: 'auto'
+const client1 = createClient({
+  local: 'auto'
+})
+// Resolves to: mlc() with automatic device-based model selection
+
+// Input: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+const client2 = createClient({
+  local: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+})
+// Resolves to: mlc({ model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC' })
+```
+
+### Object Inputs
+
+Object inputs provide structured configuration:
+
+```typescript
+// Input: LocalObjectConfig
+const client = createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWorker: true,
+    useCache: true
+  }
+})
+// Resolves to: mlc({ model: '...', useWorker: true, useCache: true })
+```
+
+### Tiered Object Inputs
+
+The responsive API uses a `tiers` object:
+
+```typescript
+// Input: LocalTierConfig
+const client = createClient({
+  local: {
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+    }
+  }
+})
+// Resolves to: mlc() with device-grade-based tier selection
+```
+
+### Function Inputs
+
+Explicit provider functions pass through unchanged:
+
+```typescript
+import { mlc } from '@webllm-io/sdk/providers/mlc'
+
+// Input: mlc() provider function
+const client = createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWorker: false,
+    logLevel: 'DEBUG'
+  })
+})
+// Resolves to: mlc({ ... }) (no transformation)
+```
+
+### Disabling Local
+
+Set `local: false` to disable local inference:
+
+```typescript
+const client = createClient({
+  local: false,
+  cloud: { /* ... */ }
+})
+// Resolves to: null (no local backend)
+```
+
+## Cloud Provider Resolution
+
+### String Inputs
+
+String inputs are treated as API keys with default OpenAI endpoint:
+
+```typescript
+// Input: API key string
+const client = createClient({
+  cloud: 'sk-...'
+})
+// Resolves to: fetchSSE({
+//   baseURL: 'https://api.openai.com/v1',
+//   apiKey: 'sk-...',
+//   model: 'gpt-4o-mini'
+// })
+```
+
+### Object Inputs
+
+Object inputs provide full configuration:
+
+```typescript
+// Input: CloudObjectConfig
+const client = createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini',
+    timeout: 30000,
+    maxRetries: 2
+  }
+})
+// Resolves to: fetchSSE({ ... })
+```
+
+### Function Inputs
+
+Explicit provider functions pass through:
+
+```typescript
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch'
+
+// Input: fetchSSE() provider function
+const client = createClient({
+  cloud: fetchSSE({
+    baseURL: 'https://api.anthropic.com/v1',
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-3-5-sonnet-20241022',
+    headers: {
+      'anthropic-version': '2023-06-01'
+    }
+  })
+})
+// Resolves to: fetchSSE({ ... }) (no transformation)
+```
+
+### Custom Cloud Functions
+
+You can provide a custom `CloudFn` implementation:
+
+```typescript
+import type { CloudFn } from '@webllm-io/sdk'
+
+const customCloudProvider: CloudFn = async ({ messages, options }) => {
+  const response = await fetch('https://my-custom-api.com/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, ...options })
+  })
+
+  // Return AsyncIterable<ChatCompletionChunk>
+  return parseSSEStream(response.body)
+}
+
+const client = createClient({
+  cloud: customCloudProvider
+})
+// Resolves to: customCloudProvider (no transformation)
+```
+
+### Disabling Cloud
+
+Set `cloud: false` to disable cloud fallback:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  cloud: false
+})
+// Resolves to: null (no cloud backend)
+```
+
+## Provider Types
+
+### ResolvedLocalBackend
+
+After resolution, local configs become `ResolvedLocalBackend`:
+
+```typescript
+type ResolvedLocalBackend = {
+  type: 'mlc'
+  model: string
+  useWorker: boolean
+  useCache: boolean
+  workerUrl?: string
+  initProgressCallback?: (report: InitProgressReport) => void
+  logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+}
+```
+
+### ResolvedCloudBackend
+
+After resolution, cloud configs become `ResolvedCloudBackend`:
+
+```typescript
+type ResolvedCloudBackend = {
+  type: 'fetchSSE' | 'custom'
+  baseURL: string
+  apiKey?: string
+  model?: string
+  timeout?: number
+  maxRetries?: number
+  headers?: Record<string, string>
+  fetch?: typeof fetch
+}
+```
+
+## Resolution Flow Diagram
+
+```
+createClient({ local, cloud })
+    ↓
+┌───────────────────────────────────────────┐
+│      Configuration Resolution             │
+├───────────────────────────────────────────┤
+│  Local Input     →  Normalize  →  mlc()   │
+│  Cloud Input     →  Normalize  →  fetchSSE()│
+└───────────────────────────────────────────┘
+    ↓
+┌───────────────────────────────────────────┐
+│      Provider Initialization              │
+├───────────────────────────────────────────┤
+│  mlc() creates MLCEngine instance         │
+│  fetchSSE() creates fetch wrapper         │
+└───────────────────────────────────────────┘
+    ↓
+┌───────────────────────────────────────────┐
+│      Backend Registration                 │
+├───────────────────────────────────────────┤
+│  Register with InferenceBackend manager   │
+│  Register with Router for decision logic  │
+└───────────────────────────────────────────┘
+    ↓
+WebLLMClient ready
+```
+
+## Auto-Wrapping Examples
+
+### Example 1: Zero Config to mlc()
+
+```typescript
+// User writes:
+createClient({ local: 'auto' })
+
+// SDK transforms to:
+createClient({
+  local: mlc({
+    model: detectDeviceGrade() === 'S' ? 'Llama-3.1-8B-...' :
+           detectDeviceGrade() === 'A' ? 'Llama-3.1-8B-...' :
+           detectDeviceGrade() === 'B' ? 'Phi-3.5-mini-...' :
+                                          'Qwen2.5-1.5B-...',
+    useWorker: true,
+    useCache: true
+  })
+})
+```
+
+### Example 2: Object Config to mlc()
+
+```typescript
+// User writes:
+createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: false
+  }
+})
+
+// SDK transforms to:
+createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useWorker: true,  // Default
+    useCache: false
+  })
+})
+```
+
+### Example 3: String API Key to fetchSSE()
+
+```typescript
+// User writes:
+createClient({
+  cloud: process.env.OPENAI_API_KEY
+})
+
+// SDK transforms to:
+createClient({
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini',
+    timeout: 30000,
+    maxRetries: 1
+  })
+})
+```
+
+### Example 4: Cloud Object to fetchSSE()
+
+```typescript
+// User writes:
+createClient({
+  cloud: {
+    baseURL: 'https://api.together.xyz/v1',
+    apiKey: process.env.TOGETHER_API_KEY,
+    model: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'
+  }
+})
+
+// SDK transforms to:
+createClient({
+  cloud: fetchSSE({
+    baseURL: 'https://api.together.xyz/v1',
+    apiKey: process.env.TOGETHER_API_KEY,
+    model: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    timeout: 30000,    // Default
+    maxRetries: 1      // Default
+  })
+})
+```
+
+## Custom Provider Implementation
+
+### Local Provider Example
+
+Implementing a custom local provider (hypothetical):
+
+```typescript
+import type { LocalFn } from '@webllm-io/sdk'
+
+const customLocalProvider: LocalFn = async ({ messages, options }) => {
+  // Initialize custom WebGPU inference engine
+  const engine = await initCustomEngine()
+
+  // Generate response
+  const stream = await engine.generate(messages, options)
+
+  // Return AsyncIterable<ChatCompletionChunk>
+  return {
+    async *[Symbol.asyncIterator]() {
+      for await (const token of stream) {
+        yield {
+          id: generateId(),
+          object: 'chat.completion.chunk',
+          created: Date.now(),
+          model: 'custom-model',
+          choices: [{
+            index: 0,
+            delta: { content: token },
+            finish_reason: null
+          }]
+        }
+      }
+    }
+  }
+}
+
+const client = createClient({
+  local: customLocalProvider
+})
+```
+
+### Cloud Provider Example
+
+Implementing a custom cloud provider for Anthropic:
+
+```typescript
+import type { CloudFn } from '@webllm-io/sdk'
+
+const anthropicProvider: CloudFn = async ({ messages, options }) => {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-sonnet-20241022',
+      messages: messages,
+      stream: true,
+      max_tokens: options.max_tokens || 4096
+    })
+  })
+
+  // Parse Anthropic's SSE format (different from OpenAI)
+  return parseAnthropicSSE(response.body)
+}
+
+const client = createClient({
+  cloud: anthropicProvider
+})
+```
+
+## Benefits of Provider Composition
+
+### 1. Progressive Disclosure
+
+Start simple, add complexity only when needed:
+
+```typescript
+// Beginner: simple string
+createClient({ local: 'auto' })
+
+// Intermediate: object config
+createClient({ local: { model: '...', useCache: false } })
+
+// Advanced: explicit provider
+createClient({ local: mlc({ model: '...', logLevel: 'DEBUG' }) })
+```
+
+### 2. Type Safety
+
+TypeScript ensures valid configurations at compile time:
+
+```typescript
+// ✅ Valid
+createClient({ local: 'auto' })
+createClient({ local: { model: 'Llama-3.1-8B' } })
+createClient({ local: mlc({ model: 'Llama-3.1-8B' }) })
+
+// ❌ Type error
+createClient({ local: 123 })
+createClient({ local: { invalidKey: true } })
+```
+
+### 3. Extensibility
+
+Custom providers integrate seamlessly:
+
+```typescript
+const client = createClient({
+  local: myCustomLocalProvider,
+  cloud: myCustomCloudProvider
+})
+```
+
+### 4. Default Optimizations
+
+Auto-wrapped providers get sensible defaults:
+
+- `useWorker: true` prevents UI freezing
+- `useCache: true` speeds up subsequent loads
+- `timeout: 30000` prevents hung requests
+- `maxRetries: 1` handles transient network errors
+
+## Best Practices
+
+### 1. Use Auto-Wrapping for Simplicity
+
+Let the SDK handle provider creation:
+
+```typescript
+// ✅ Recommended for most use cases
+createClient({
+  local: 'auto',
+  cloud: { baseURL: '...', apiKey: '...' }
+})
+```
+
+### 2. Use Explicit Providers for Advanced Control
+
+When you need debugging or non-standard configs:
+
+```typescript
+// ✅ Use explicit providers for advanced scenarios
+import { mlc } from '@webllm-io/sdk/providers/mlc'
+
+createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    logLevel: 'DEBUG',
+    initProgressCallback: (report) => {
+      console.log(`Loading: ${report.text}`)
+    }
+  })
+})
+```
+
+### 3. Validate Custom Providers
+
+Ensure custom providers match the expected interface:
+
+```typescript
+import type { CloudFn } from '@webllm-io/sdk'
+
+const myProvider: CloudFn = async ({ messages, options }) => {
+  // Implementation must return AsyncIterable<ChatCompletionChunk>
+  // ...
+}
+```
+
+### 4. Document Provider Assumptions
+
+If you're wrapping a non-standard API, document the assumptions:
+
+```typescript
+/**
+ * Custom provider for XYZ API
+ * Assumes:
+ * - OpenAI-compatible message format
+ * - SSE streaming with 'data:' prefix
+ * - Authentication via 'X-API-Key' header
+ */
+const xyzProvider = async ({ messages, options }) => {
+  // ...
+}
+```
+
+## Next Steps
+
+- Learn about [Architecture](/concepts/architecture) for overall system design
+- Understand [Three-Level API](/concepts/three-level-api) for configuration patterns
+- Explore [Device Scoring](/concepts/device-scoring) for automatic model selection

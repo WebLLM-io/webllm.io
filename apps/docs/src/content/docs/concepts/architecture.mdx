@@ -1,0 +1,237 @@
+---
+title: "Architecture"
+description: "Overall architecture and module design of WebLLM.io SDK"
+---
+
+WebLLM.io is designed as a dual-engine AI inference SDK that seamlessly combines local browser-based inference with cloud API fallback. This architecture enables progressive enhancement: applications work everywhere with cloud APIs, but leverage local GPU acceleration when available.
+
+## High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Application Layer                       │
+│                  createClient() → WebLLMClient               │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Hardware Fingerprint                      │
+│              WebGPU Detection + VRAM Estimation              │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      Device Scoring                          │
+│              S (≥8GB) / A (≥4GB) / B (≥2GB) / C (<2GB)      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     Route Decision Engine                    │
+│   Consider: Device Grade, Battery, Network, Backend Status   │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+                 ┌────────────┴────────────┐
+                 ↓                         ↓
+    ┌────────────────────────┐  ┌────────────────────────┐
+    │    Local Backend       │  │    Cloud Backend       │
+    │  WebGPU + MLC Engine   │  │   fetchSSE + OpenAI    │
+    │   (in Web Worker)      │  │   Compatible API       │
+    └────────────────────────┘  └────────────────────────┘
+```
+
+## Module Layout
+
+The SDK is organized into eight core modules:
+
+### 1. Core Module
+
+**Location:** `packages/sdk/src/core/`
+
+Exports the primary `createClient()` factory function and fundamental types. Handles configuration resolution, normalization, and validation. Defines error classes and client lifecycle management.
+
+**Key responsibilities:**
+- Client factory and initialization
+- Configuration type definitions and resolution
+- Error handling abstractions
+- Core interfaces and contracts
+
+### 2. Capability Module
+
+**Location:** `packages/sdk/src/capability/`
+
+Detects WebGPU availability, estimates VRAM through `maxStorageBufferBindingSize`, and assigns device grades (S/A/B/C). This module acts as the hardware fingerprinting layer.
+
+**Key responsibilities:**
+- WebGPU feature detection
+- VRAM estimation via WebGPU limits
+- Device scoring algorithm
+- Compatibility checks
+
+### 3. Providers Module
+
+**Location:** `packages/sdk/src/providers/`
+
+Contains provider implementations for local and cloud backends. The `mlc()` provider wraps `@mlc-ai/web-llm` for local inference. The `fetchSSE()` provider implements OpenAI-compatible server-sent events parsing without external dependencies.
+
+**Key responsibilities:**
+- `mlc()` provider for local MLC inference
+- `fetchSSE()` for cloud streaming APIs
+- Provider composition and wrapping logic
+- Custom provider interface definitions
+
+### 4. Inference Module
+
+**Location:** `packages/sdk/src/inference/`
+
+Defines the `InferenceBackend` interface and implements local/cloud backend adapters. Includes the `RequestQueue` that serializes concurrent requests to the single-threaded MLC engine.
+
+**Key responsibilities:**
+- `InferenceBackend` interface contract
+- Local backend (MLC) adapter
+- Cloud backend (fetch) adapter
+- Request queue for serialization
+
+### 5. Router Module
+
+**Location:** `packages/sdk/src/router/`
+
+Implements the route decision engine that determines whether to use local or cloud inference for each request. Considers device grade, backend readiness, battery status, and network conditions.
+
+**Key responsibilities:**
+- Route decision algorithm
+- Fallback strategy management
+- Backend health monitoring
+- Dynamic routing based on runtime conditions
+
+### 6. Chat Module
+
+**Location:** `packages/sdk/src/chat/`
+
+Implements the OpenAI-compatible `chat.completions` API with automatic fallback logic. Handles streaming and non-streaming responses, abort signals, and error recovery.
+
+**Key responsibilities:**
+- `chat.completions.create()` API
+- Streaming and non-streaming response handling
+- Automatic local-to-cloud fallback
+- Abort signal propagation
+
+### 7. Loader Module
+
+**Location:** `packages/sdk/src/loader/`
+
+Manages progressive model loading with OPFS (Origin Private File System) caching. Tracks load state, emits progress events, and handles cache invalidation.
+
+**Key responsibilities:**
+- Progressive model download and initialization
+- OPFS cache management
+- Load state tracking and events
+- Cache hit/miss optimization
+
+### 8. Utils Module
+
+**Location:** `packages/sdk/src/utils/`
+
+Provides shared utilities including a lightweight `EventEmitter` for progress tracking, a self-implemented SSE parser (~30 lines, zero dependencies), and logging helpers.
+
+**Key responsibilities:**
+- EventEmitter for progress events
+- SSE (Server-Sent Events) parser
+- Logger abstraction
+- Common helper functions
+
+## Request Flow
+
+### Standard Request Path
+
+1. **Application** calls `client.chat.completions.create(messages)`
+2. **Chat module** receives request with messages and options
+3. **Router** evaluates:
+   - Is local backend ready?
+   - Is device grade sufficient?
+   - Is battery low?
+   - Is network available?
+4. **Route decision** selects local or cloud backend
+5. **Inference backend** processes request:
+   - **Local**: Queue request → MLC engine → stream response
+   - **Cloud**: Fetch SSE → parse stream → return response
+6. **Chat module** returns streaming iterator or response object
+7. **Application** consumes response chunks
+
+### Fallback Flow
+
+If local inference fails (e.g., out of memory, WebGPU context lost):
+
+1. **Chat module** catches error
+2. **Router** marks local backend as unavailable
+3. **Request automatically retries** with cloud backend
+4. **Application** receives response transparently
+
+This automatic fallback ensures resilience without manual error handling.
+
+## Dual Engine Design
+
+The dual-engine architecture provides three key benefits:
+
+### 1. Progressive Enhancement
+
+Applications work everywhere with cloud APIs, but automatically accelerate with local GPU when available. No feature detection required in application code.
+
+### 2. Zero Configuration
+
+`createClient({ local: 'auto' })` automatically:
+- Detects WebGPU support
+- Estimates VRAM
+- Selects appropriate model
+- Falls back to cloud if needed
+
+### 3. Full Control
+
+Advanced use cases can explicitly configure providers:
+
+```typescript
+createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: true
+  }),
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY
+  })
+})
+```
+
+## WebWorker Isolation
+
+By default, local inference runs in a dedicated Web Worker to prevent UI freezing:
+
+```
+Main Thread                    Worker Thread
+─────────────────              ─────────────────
+createClient()
+    ↓
+Initialize Worker ────────────→ Load MLC Engine
+    ↓                              ↓
+Send inference request ─────────→ Enqueue in RequestQueue
+    ↓                              ↓
+Receive streaming chunks ←────── MLCEngine.generate()
+    ↓                              ↓
+Render UI                      Continue processing
+```
+
+This architecture ensures smooth user experience even during intensive inference operations.
+
+## Subpath Exports
+
+The SDK uses Node.js subpath exports for selective importing:
+
+- `@webllm-io/sdk` — Main entry: createClient, checkCapability, types
+- `@webllm-io/sdk/providers/mlc` — mlc() provider function
+- `@webllm-io/sdk/providers/fetch` — fetchSSE() provider function
+- `@webllm-io/sdk/worker` — Web Worker entry for MLC inference
+
+This design reduces bundle size by allowing tree-shaking of unused providers.
+
+## Next Steps
+
+- Learn about the [Three-Level API](/concepts/three-level-api) design
+- Understand [Device Scoring](/concepts/device-scoring) in detail
+- Explore [Provider Composition](/concepts/provider-composition) patterns

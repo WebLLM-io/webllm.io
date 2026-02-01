@@ -1,0 +1,191 @@
+---
+title: "Local Inference"
+description: "Run AI models locally in the browser using WebGPU and MLC"
+---
+
+WebLLM.io enables running large language models entirely in the browser using WebGPU and the MLC inference engine. This eliminates server costs and ensures complete privacy since all data stays on the user's device.
+
+## Prerequisites
+
+To use local inference, you need to install the `@mlc-ai/web-llm` peer dependency:
+
+```bash
+npm install @mlc-ai/web-llm
+# or
+pnpm add @mlc-ai/web-llm
+# or
+yarn add @mlc-ai/web-llm
+```
+
+Your browser must also support WebGPU. Use `checkCapability()` to verify device compatibility before enabling local features.
+
+## Basic Usage
+
+The simplest way to enable local inference is with `local: 'auto'`:
+
+```typescript
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto'
+});
+
+const completion = await client.chat.completions.create({
+  messages: [
+    { role: 'user', content: 'What is WebGPU?' }
+  ]
+});
+
+console.log(completion.choices[0].message.content);
+```
+
+With `'auto'`, the SDK automatically selects the optimal model based on your device's capabilities (VRAM grade).
+
+## Explicit Model Selection
+
+You can specify a model explicitly:
+
+```typescript
+const client = createClient({
+  local: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+});
+```
+
+Or use an object configuration for more control:
+
+```typescript
+const client = createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: true,        // Enable OPFS caching (default: true)
+    useWebWorker: true     // Run in Web Worker (default: true)
+  }
+});
+```
+
+## Device-Aware Model Selection with Tiers
+
+For adaptive model selection based on device capabilities, use the `tiers` configuration:
+
+```typescript
+const client = createClient({
+  local: {
+    tiers: {
+      S: 'Llama-3.1-70B-Instruct-q4f16_1-MLC',  // ≥8GB VRAM
+      A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',   // ≥4GB VRAM
+      B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',     // ≥2GB VRAM
+      C: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'    // <2GB VRAM
+    }
+  }
+});
+```
+
+The SDK will check the device's VRAM estimate and select the appropriate model tier automatically. All grades (S/A/B/C) support local inference.
+
+## WebWorker Execution
+
+By default, inference runs in a Web Worker to prevent UI freezing during model loading and inference:
+
+```typescript
+const client = createClient({
+  local: {
+    model: 'auto',
+    useWebWorker: true  // default
+  }
+});
+```
+
+**Important**: WebWorker mode requires proper COOP/COEP headers for SharedArrayBuffer support. See the [Web Worker guide](/guides/web-worker) for configuration details.
+
+To disable WebWorker (runs on main thread):
+
+```typescript
+const client = createClient({
+  local: {
+    model: 'auto',
+    useWebWorker: false
+  }
+});
+```
+
+## OPFS Model Caching
+
+Models are automatically cached using the Origin Private File System (OPFS) to avoid re-downloading on subsequent visits:
+
+```typescript
+const client = createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: true  // default
+  }
+});
+```
+
+To disable caching:
+
+```typescript
+const client = createClient({
+  local: {
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: false
+  }
+});
+```
+
+Check cache status and manage cached models:
+
+```typescript
+// Check if model is cached
+const isCached = await client.hasModelInCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+
+// Delete model from cache
+await client.deleteModelFromCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+```
+
+## Dynamic Model Selection
+
+Use a function to decide the model at runtime based on device statistics:
+
+```typescript
+const client = createClient({
+  local: (stats) => {
+    if (stats.grade === 'S' || stats.grade === 'A') {
+      return 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+    }
+    if (stats.grade === 'B') {
+      return 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+    }
+    // Grade C or unsupported
+    return 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+  }
+});
+```
+
+The `stats` object contains `{ grade, webgpu, gpu, connection, battery, memory }`.
+
+## Progress Tracking
+
+Monitor model download and loading progress:
+
+```typescript
+const client = createClient({
+  local: 'auto',
+  onProgress: (progress) => {
+    console.log(`Stage: ${progress.stage}`);
+    console.log(`Progress: ${progress.progress}%`);
+    console.log(`Model: ${progress.model}`);
+
+    if (progress.bytesLoaded && progress.bytesTotal) {
+      const mb = (progress.bytesLoaded / 1024 / 1024).toFixed(1);
+      const totalMb = (progress.bytesTotal / 1024 / 1024).toFixed(1);
+      console.log(`Downloaded: ${mb}MB / ${totalMb}MB`);
+    }
+  }
+});
+```
+
+## Next Steps
+
+- Learn about [Cloud Fallback](/guides/cloud-fallback) for OpenAI-compatible API support
+- Explore [Hybrid Routing](/guides/hybrid-routing) to combine local and cloud inference
+- See [Model Loading](/guides/model-loading) for progressive loading strategies

@@ -1,0 +1,299 @@
+---
+title: "mlc()"
+description: "Provider function for local WebGPU inference using MLC Engine with device-adaptive model selection"
+---
+
+Creates a local inference provider using MLC Engine with WebGPU. Supports device-adaptive model selection via tier configuration, OPFS caching, and WebWorker isolation.
+
+## Import
+
+```ts
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+```
+
+## Signature
+
+```ts
+function mlc(options?: MLCProviderOptions): ResolvedLocalBackend;
+```
+
+## Parameters
+
+### `options` (optional)
+
+Configuration object for the MLC provider.
+
+```ts
+interface MLCProviderOptions {
+  model?: string;
+  tiers?: {
+    high?: string | 'auto' | null;
+    medium?: string | 'auto' | null;
+    low?: string | 'auto' | null;
+  };
+  useCache?: boolean;
+  useWebWorker?: boolean;
+}
+```
+
+#### `model` (optional)
+
+Fixed model ID to use regardless of device capability. Overrides tier-based selection.
+
+- Type: `string`
+- Default: `undefined` (uses tier-based auto-selection)
+- Example: `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`
+
+#### `tiers` (optional)
+
+Device-adaptive model mapping by performance grade.
+
+- Type: `TiersConfig`
+
+```ts
+interface TiersConfig {
+  high?: string | 'auto' | null;
+  medium?: string | 'auto' | null;
+  low?: string | 'auto' | null;
+}
+```
+
+**Tier mapping:**
+- `high` - Used for grade S (≥8GB VRAM)
+- `medium` - Used for grade A (≥4GB VRAM)
+- `low` - Used for grades B and C (&lt;4GB VRAM)
+
+**Values:**
+- Model ID string (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`)
+- `'auto'` - Use SDK's default model for this tier
+- `null` - Disable local inference for this tier
+
+**Default tiers:**
+```ts
+{
+  high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+  medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+  low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+}
+```
+
+#### `useCache` (optional)
+
+Enable OPFS (Origin Private File System) caching for downloaded models.
+
+- Type: `boolean`
+- Default: `true`
+- Recommended: Keep enabled to avoid re-downloading models
+
+#### `useWebWorker` (optional)
+
+Run MLC Engine in a WebWorker to prevent UI blocking during inference.
+
+- Type: `boolean`
+- Default: `true`
+- Recommended: Keep enabled for better UX
+
+## Return Value
+
+Returns a `ResolvedLocalBackend` instance ready for use with `createClient()`.
+
+## Examples
+
+### Basic usage (auto tier selection)
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+
+const client = createClient({
+  local: mlc()
+});
+// Automatically selects model based on device grade
+```
+
+### Fixed model (no adaptive selection)
+
+```ts
+const client = createClient({
+  local: mlc({
+    model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC'
+  })
+});
+// Always uses Qwen2.5-3B regardless of device capability
+```
+
+### Custom tier configuration
+
+```ts
+const client = createClient({
+  local: mlc({
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      low: null  // Disable local inference on low-end devices
+    }
+  })
+});
+```
+
+### Disable caching (testing/development)
+
+```ts
+const client = createClient({
+  local: mlc({
+    useCache: false  // Models will be re-downloaded each time
+  })
+});
+```
+
+### Main thread inference (not recommended)
+
+```ts
+const client = createClient({
+  local: mlc({
+    useWebWorker: false  // Runs in main thread, may freeze UI
+  })
+});
+```
+
+### Combine with cloud fallback
+
+```ts
+import { mlc } from '@webllm-io/sdk/providers/mlc';
+import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
+
+const client = createClient({
+  local: mlc({
+    tiers: {
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      low: null  // Low-end devices fall back to cloud
+    }
+  }),
+  cloud: fetchSSE({
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  })
+});
+```
+
+### Preload with progress tracking
+
+```ts
+const client = createClient({
+  local: mlc({
+    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    useCache: true,
+    useWebWorker: true
+  }),
+  onProgress: (progress) => {
+    console.log(`${progress.stage}: ${Math.round(progress.progress * 100)}%`);
+    if (progress.bytesLoaded && progress.bytesTotal) {
+      const mb = (progress.bytesLoaded / 1024 / 1024).toFixed(1);
+      const totalMb = (progress.bytesTotal / 1024 / 1024).toFixed(1);
+      console.log(`Downloaded: ${mb}MB / ${totalMb}MB`);
+    }
+  }
+});
+
+await client.local.load('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+```
+
+### Device-specific configuration
+
+```ts
+import { checkCapability } from '@webllm-io/sdk';
+
+const cap = await checkCapability();
+
+const client = createClient({
+  local: mlc({
+    model: cap.grade === 'S' ? 'Llama-3.1-8B-Instruct-q4f16_1-MLC' :
+           cap.grade === 'A' ? 'Qwen2.5-3B-Instruct-q4f16_1-MLC' :
+           'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    useCache: cap.grade !== 'C',  // Disable cache on low-end
+    useWebWorker: true
+  })
+});
+```
+
+### Conditional local provider
+
+```ts
+import { checkCapability } from '@webllm-io/sdk';
+
+const cap = await checkCapability();
+
+const client = createClient({
+  local: cap.webgpu ? mlc() : false,
+  cloud: process.env.OPENAI_API_KEY
+});
+```
+
+## Model Compatibility
+
+The `mlc()` provider works with MLC-compiled models from the [@mlc-ai/web-llm](https://github.com/mlc-ai/web-llm) library.
+
+**Common models:**
+- `Llama-3.1-8B-Instruct-q4f16_1-MLC` (requires ~4.5GB VRAM)
+- `Qwen2.5-3B-Instruct-q4f16_1-MLC` (requires ~2GB VRAM)
+- `Qwen2.5-1.5B-Instruct-q4f16_1-MLC` (requires ~1GB VRAM)
+
+For a full list of available models, see the [MLC Web LLM model library](https://github.com/mlc-ai/web-llm/blob/main/src/config.ts).
+
+## Performance Notes
+
+- **First load:** Models are downloaded and cached in OPFS (several GB, can take minutes)
+- **Subsequent loads:** Models load from cache (seconds)
+- **WebWorker overhead:** Minimal (~10-20ms per request for message passing)
+- **Main thread mode:** Faster startup but blocks UI during inference
+
+## Requirements
+
+- **Browser:** Chrome 113+, Edge 113+, or Safari 18+ (WebGPU support required)
+- **Headers:** `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (for SharedArrayBuffer)
+- **Dependency:** `@mlc-ai/web-llm` must be installed (peer dependency)
+
+## Troubleshooting
+
+### Model loading fails
+
+```ts
+// Check capability first
+const cap = await checkCapability();
+if (!cap.webgpu) {
+  console.error('WebGPU not available');
+}
+```
+
+### Out of memory errors
+
+```ts
+// Use smaller model or disable cache
+const client = createClient({
+  local: mlc({
+    model: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    useCache: false
+  })
+});
+```
+
+### UI freezing during inference
+
+```ts
+// Ensure WebWorker is enabled
+const client = createClient({
+  local: mlc({
+    useWebWorker: true  // Should be true (default)
+  })
+});
+```
+
+## See Also
+
+- [createClient()](/api/create-client) - Client creation
+- [Config Types](/api/config-types) - All configuration options
+- [Providers (Fetch)](/api/providers-fetch) - Cloud inference provider
+- [checkCapability()](/api/check-capability) - Device detection
+- [Cache Management](/api/cache-management) - OPFS cache utilities

@@ -1,0 +1,339 @@
+---
+title: "JSON Output"
+description: "Generate structured JSON responses with type-safe parsing"
+---
+
+WebLLM.io provides helpers for generating structured JSON output, useful for extracting data, function calling, and building structured workflows.
+
+## Basic JSON Output
+
+```typescript
+import { createClient, withJsonOutput } from '@webllm-io/sdk';
+
+const client = await createClient({
+  local: 'auto'
+});
+
+// Request JSON-formatted response
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a helpful assistant that extracts information and returns valid JSON.'
+      },
+      {
+        role: 'user',
+        content: 'Extract the name, age, and city from: "John is 25 years old and lives in Paris."'
+      }
+    ]
+  })
+);
+
+// Parse JSON response
+const data = JSON.parse(response.choices[0].message.content);
+console.log(data);
+// { name: "John", age: 25, city: "Paris" }
+```
+
+## What Does `withJsonOutput()` Do?
+
+The `withJsonOutput()` helper:
+
+1. Adds instructions to the system message to return valid JSON
+2. Sets `response_format: { type: 'json_object' }` for compatible providers
+3. Ensures the model outputs parseable JSON
+
+## Structured Extraction Example
+
+```typescript
+import { createClient, withJsonOutput } from '@webllm-io/sdk';
+
+interface Product {
+  name: string;
+  price: number;
+  category: string;
+  inStock: boolean;
+}
+
+const client = await createClient({ local: 'auto' });
+
+const productText = `
+  The new iPhone 15 Pro costs $999 and is available now.
+  Category: Electronics
+`;
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `Extract product information and return as JSON with fields:
+                  name (string), price (number), category (string), inStock (boolean)`
+      },
+      {
+        role: 'user',
+        content: productText
+      }
+    ]
+  })
+);
+
+const product: Product = JSON.parse(response.choices[0].message.content);
+console.log(product);
+// {
+//   name: "iPhone 15 Pro",
+//   price: 999,
+//   category: "Electronics",
+//   inStock: true
+// }
+```
+
+## Array Responses
+
+```typescript
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: 'Extract all mentioned cities as a JSON array of objects with "name" and "country" fields.'
+      },
+      {
+        role: 'user',
+        content: 'I visited Paris in France, Tokyo in Japan, and New York in the USA.'
+      }
+    ]
+  })
+);
+
+const cities = JSON.parse(response.choices[0].message.content);
+console.log(cities);
+// [
+//   { name: "Paris", country: "France" },
+//   { name: "Tokyo", country: "Japan" },
+//   { name: "New York", country: "USA" }
+// ]
+```
+
+## Error Handling
+
+Always validate JSON parsing:
+
+```typescript
+try {
+  const response = await client.chat.completions.create(
+    withJsonOutput({
+      messages: [
+        { role: 'system', content: 'Return JSON with "summary" and "keywords" fields.' },
+        { role: 'user', content: 'Summarize: AI is transforming software development.' }
+      ]
+    })
+  );
+
+  const data = JSON.parse(response.choices[0].message.content);
+
+  // Validate structure
+  if (!data.summary || !Array.isArray(data.keywords)) {
+    throw new Error('Invalid JSON structure');
+  }
+
+  console.log('Summary:', data.summary);
+  console.log('Keywords:', data.keywords);
+
+} catch (error) {
+  console.error('JSON parsing failed:', error);
+  // Handle error (retry, use fallback, etc.)
+}
+```
+
+## Type-Safe JSON with Zod
+
+Use Zod for runtime validation:
+
+```typescript
+import { z } from 'zod';
+import { createClient, withJsonOutput } from '@webllm-io/sdk';
+
+const PersonSchema = z.object({
+  name: z.string(),
+  age: z.number().int().positive(),
+  email: z.string().email(),
+  interests: z.array(z.string())
+});
+
+type Person = z.infer<typeof PersonSchema>;
+
+const client = await createClient({ local: 'auto' });
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `Extract person information as JSON with fields:
+                  name, age, email, interests (array of strings)`
+      },
+      {
+        role: 'user',
+        content: 'Sarah is 28, email sarah@example.com, loves hiking and photography'
+      }
+    ]
+  })
+);
+
+const rawData = JSON.parse(response.choices[0].message.content);
+const person: Person = PersonSchema.parse(rawData);  // Validates at runtime
+
+console.log(person);
+// Type-safe and validated!
+```
+
+## Function Calling Pattern
+
+Simulate function calling with JSON output:
+
+```typescript
+interface FunctionCall {
+  function: string;
+  arguments: Record<string, any>;
+}
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `You have access to the following functions:
+                  - getWeather(city: string)
+                  - sendEmail(to: string, subject: string, body: string)
+
+                  Return a JSON object with "function" and "arguments" fields.`
+      },
+      {
+        role: 'user',
+        content: 'What\'s the weather like in Tokyo?'
+      }
+    ]
+  })
+);
+
+const functionCall: FunctionCall = JSON.parse(response.choices[0].message.content);
+console.log(functionCall);
+// {
+//   function: "getWeather",
+//   arguments: { city: "Tokyo" }
+// }
+
+// Execute the function
+if (functionCall.function === 'getWeather') {
+  const weather = await getWeather(functionCall.arguments.city);
+  console.log(weather);
+}
+```
+
+## Streaming JSON (Advanced)
+
+For streaming JSON responses, collect all chunks first:
+
+```typescript
+const stream = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      { role: 'system', content: 'Return a JSON array of 3 recipe suggestions.' },
+      { role: 'user', content: 'I have chicken, rice, and broccoli.' }
+    ],
+    stream: true
+  })
+);
+
+let fullContent = '';
+
+for await (const chunk of stream) {
+  const delta = chunk.choices[0]?.delta?.content;
+  if (delta) {
+    fullContent += delta;
+  }
+}
+
+// Parse complete JSON
+const recipes = JSON.parse(fullContent);
+console.log(recipes);
+```
+
+## Complex Nested Structures
+
+```typescript
+interface Article {
+  title: string;
+  author: string;
+  publishedDate: string;
+  sections: {
+    heading: string;
+    paragraphs: string[];
+  }[];
+  tags: string[];
+}
+
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'system',
+        content: `Generate an article outline as JSON with:
+                  title, author, publishedDate,
+                  sections (array of {heading, paragraphs}),
+                  tags (array of strings)`
+      },
+      {
+        role: 'user',
+        content: 'Create an outline for an article about WebGPU in browsers'
+      }
+    ]
+  })
+);
+
+const article: Article = JSON.parse(response.choices[0].message.content);
+console.log(article.sections.map(s => s.heading));
+```
+
+## Cloud Provider Compatibility
+
+OpenAI and compatible providers support `response_format`:
+
+```typescript
+const client = await createClient({
+  cloud: {
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
+  }
+});
+
+// Works seamlessly with cloud providers
+const response = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      { role: 'system', content: 'Return JSON with "result" field.' },
+      { role: 'user', content: 'Calculate 15% tip on $87.50' }
+    ]
+  })
+);
+
+const data = JSON.parse(response.choices[0].message.content);
+console.log('Tip amount:', data.result);
+```
+
+## Best Practices
+
+1. **Clear schema in system message** — Specify exact field names and types
+2. **Validate JSON** — Always use try-catch with JSON.parse()
+3. **Use type guards** — Runtime validation with Zod, io-ts, or custom validators
+4. **Handle malformed output** — Some models may occasionally return invalid JSON
+5. **Provide examples** — Include JSON examples in the prompt for better results
+
+## Next Steps
+
+- [API Reference](/api/with-json-output) — Full `withJsonOutput` documentation
+- [Streaming Chat](/examples/streaming-chat) — Stream structured output
+- [Custom Providers](/guides/custom-providers) — Implement custom JSON parsing logic

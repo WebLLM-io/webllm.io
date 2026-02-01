@@ -1,0 +1,96 @@
+---
+title: "Installation"
+description: "Install @webllm-io/sdk and optional dependencies for local and cloud AI inference"
+---
+
+# Installation
+
+Get started with WebLLM.io by installing the core SDK package.
+
+## Core Package
+
+Install `@webllm-io/sdk` using your preferred package manager:
+
+```bash
+# npm
+npm install @webllm-io/sdk
+
+# pnpm
+pnpm add @webllm-io/sdk
+
+# yarn
+yarn add @webllm-io/sdk
+```
+
+## Optional Peer Dependency
+
+For **local inference** support, you need to install `@mlc-ai/web-llm` as a peer dependency:
+
+```bash
+# npm
+npm install @mlc-ai/web-llm
+
+# pnpm
+pnpm add @mlc-ai/web-llm
+
+# yarn
+yarn add @mlc-ai/web-llm
+```
+
+:::note
+If you only plan to use cloud inference, you can skip installing `@mlc-ai/web-llm`. The SDK will automatically disable local inference when the peer dependency is not available.
+:::
+
+## TypeScript Support
+
+TypeScript definitions are included out of the box. No additional `@types` packages are needed.
+
+## Browser Requirements
+
+### Local Inference (WebGPU)
+
+To run models locally in the browser, you need:
+
+- **Chrome 113+** or **Edge 113+**
+- **WebGPU support** enabled (usually on by default)
+- **Sufficient VRAM** — Device scoring adapts model selection to available resources
+
+:::tip[Check Device Capability]
+Use the built-in capability checker to verify WebGPU support:
+
+```ts
+import { checkCapability } from '@webllm-io/sdk';
+
+const capability = await checkCapability();
+console.log(capability.grade); // S, A, B, or C
+console.log(capability.canRunLocal); // true if WebGPU is available
+```
+:::
+
+### Cloud Mode
+
+Cloud inference works in **all modern browsers** with no special requirements:
+
+- Chrome, Firefox, Safari, Edge (latest versions)
+- Mobile browsers (iOS Safari, Chrome Mobile)
+
+## Verification
+
+After installation, verify everything is set up correctly:
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto',
+  cloud: { baseURL: 'https://api.openai.com/v1', apiKey: 'sk-...' },
+});
+
+console.log('WebLLM client created successfully!');
+```
+
+## Next Steps
+
+- [Quick Start](/getting-started/quick-start) — Make your first completion
+- [Playground](/getting-started/playground) — Try the interactive demo
+- [Configuration](/guides/configuration) — Learn about advanced options

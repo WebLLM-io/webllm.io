@@ -1,0 +1,19 @@
+{
+  "name": "@webllm-io/docs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --port 4322",
+    "build": "astro sync && astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check"
+  },
+  "dependencies": {
+    "astro": "^5",
+    "@astrojs/starlight": "^0.32"
+  },
+  "devDependencies": {
+    "typescript": "^5.5"
+  }
+}

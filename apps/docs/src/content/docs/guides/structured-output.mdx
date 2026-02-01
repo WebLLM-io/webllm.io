@@ -1,0 +1,71 @@
+---
+title: Structured Output
+description: Get JSON-formatted responses using withJsonOutput().
+---
+
+The `withJsonOutput()` helper configures a chat completion request for JSON structured output. It works with both local (MLC) and cloud providers.
+
+## Usage
+
+```ts
+import { createClient } from '@webllm-io/sdk';
+import { withJsonOutput } from '@webllm-io/sdk';
+
+const client = createClient({
+  local: 'auto',
+  cloud: { baseURL: 'https://api.example.com/v1', apiKey: 'sk-...' },
+});
+
+const res = await client.chat.completions.create(
+  withJsonOutput({
+    messages: [
+      {
+        role: 'user',
+        content: 'Return a JSON object with fields: name (string), age (number)',
+      },
+    ],
+  }),
+);
+
+const data = JSON.parse(res.choices[0].message.content);
+console.log(data.name, data.age);
+```
+
+## How It Works
+
+`withJsonOutput()` sets `response_format: { type: 'json_object' }` on the request object. This is supported by both the MLC engine (local) and OpenAI-compatible cloud APIs.
+
+```ts
+function withJsonOutput<T extends ChatCompletionRequest>(req: T): T {
+  return {
+    ...req,
+    response_format: { type: 'json_object' },
+  };
+}
+```
+
+## With Streaming
+
+Structured output works with streaming too. Accumulate chunks and parse the final result:
+
+```ts
+const stream = client.chat.completions.create(
+  withJsonOutput({
+    messages: [{ role: 'user', content: 'Return JSON: { "items": ["a","b","c"] }' }],
+    stream: true,
+  }),
+);
+
+let content = '';
+for await (const chunk of stream) {
+  content += chunk.choices[0]?.delta?.content ?? '';
+}
+
+const result = JSON.parse(content);
+```
+
+## Tips
+
+- Always instruct the model to return JSON in the message content — `response_format` alone may not be sufficient for all models.
+- Wrap `JSON.parse()` in a try/catch — models can occasionally produce invalid JSON.
+- Smaller local models (grade C devices) may produce less reliable JSON. Consider using cloud fallback for critical structured output tasks.
