@@ -1,6 +1,7 @@
 {
   "name": "@webllm-io/sdk",
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -45,7 +46,8 @@
     "provenance": true
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
