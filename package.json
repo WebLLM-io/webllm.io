@@ -10,8 +10,9 @@
     "build:site": "turbo build && bash scripts/build-site.sh"
   },
   "devDependencies": {
+    "@changesets/cli": "^2",
     "turbo": "^2",
-    "@changesets/cli": "^2"
+    "wrangler": "^4.61.1"
   },
   "packageManager": "pnpm@9.15.4"
 }
