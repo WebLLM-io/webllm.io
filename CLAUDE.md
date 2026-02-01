@@ -148,7 +148,7 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 ### CI/CD Workflows
 
 - **`.github/workflows/deploy.yml`** — Deploys `dist/site/` to Cloudflare Pages on push to main
-- **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main
+- **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main (uses npm Trusted Publishing via OIDC, no token needed)
 
 ### Required GitHub Secrets
 
@@ -156,7 +156,13 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 |---|---|
 | `CLOUDFLARE_API_TOKEN` | Cloudflare Pages deploy (wrangler) |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account identifier |
-| `NPM_TOKEN` | npm publish authentication |
+
+### npm Trusted Publishing
+
+The release workflow uses OIDC-based Trusted Publishing instead of an NPM_TOKEN. Configure it on npmjs.com:
+
+1. Go to `@webllm-io/sdk` package settings → Publishing access → Trusted Publishing
+2. Add: Repository `WebLLM-io/webllm.io`, Workflow `release.yml`
 
 ## Key Dependencies
 
