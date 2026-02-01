@@ -7,6 +7,8 @@ pnpm + Turborepo monorepo with the following packages:
 - `packages/sdk` — `@webllm-io/sdk` core library
 - `packages/ui` — `@webllm-io/ui` (planned)
 - `packages/rag` — `@webllm-io/rag` (planned)
+- `apps/web` — `@webllm-io/web` Astro landing page (dark-themed brand portal)
+- `apps/docs` — `@webllm-io/docs` Astro Starlight documentation site
 - `apps/playground` — Vite + vanilla TS demo app
 - `tooling/tsconfig` — Shared TypeScript configurations
 
@@ -63,6 +65,30 @@ pnpm --filter @webllm-io/playground dev   # Start playground dev server
 
 Requires COOP/COEP headers (configured in vite.config.ts) for SharedArrayBuffer.
 
+### Landing Page (apps/web)
+
+```bash
+pnpm --filter @webllm-io/web dev      # Start on localhost:4321
+```
+
+Astro static site with dark theme. Sections: Header → Hero → ProblemStatement → Solution → HowItWorks → DXJourney → Roadmap → GetStarted → Footer. Global styles in `src/styles/global.css` using CSS custom properties (no Tailwind).
+
+### Documentation (apps/docs)
+
+```bash
+pnpm --filter @webllm-io/docs dev     # Start on localhost:4322
+```
+
+Astro Starlight site. Content in `src/content/docs/` as MDX files. Sidebar structure: Getting Started (3), Guides (10), Concepts (5), API Reference (10), Examples (7), FAQ. Edit links point to GitHub `WebLLM-io/webllm.io` repo.
+
+### Port Allocation
+
+| App | Port |
+|---|---|
+| `apps/web` | 4321 |
+| `apps/docs` | 4322 |
+| `apps/playground` | 5173 |
+
 #### Settings Panel
 
 The playground includes a collapsible Settings panel with **Local** and **Cloud** sections:
@@ -92,6 +118,7 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 - All code, comments, docs, git messages in English
 - @webgpu/types for WebGPU TypeScript definitions
 - @mlc-ai/web-llm as optional peerDependency (dynamic import)
+- Astro apps (web, docs) inherit `astro/tsconfigs/strict`, not monorepo tsconfig
 
 ## Key Dependencies
 
@@ -101,3 +128,5 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 - `vite` — Playground dev server
 - `turbo` — Monorepo task runner
 - `@changesets/cli` — Version management
+- `astro` — Static site framework for web and docs apps
+- `@astrojs/starlight` — Documentation theme for docs app
