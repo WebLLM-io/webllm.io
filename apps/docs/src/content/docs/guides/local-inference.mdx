@@ -71,16 +71,15 @@ For adaptive model selection based on device capabilities, use the `tiers` confi
 const client = createClient({
   local: {
     tiers: {
-      S: 'Llama-3.1-70B-Instruct-q4f16_1-MLC',  // ≥8GB VRAM
-      A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',   // ≥4GB VRAM
-      B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',     // ≥2GB VRAM
-      C: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'    // <2GB VRAM
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',         // S/A grade (≥4GB VRAM)
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',        // B grade (≥2GB VRAM)
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'           // C grade (<2GB VRAM)
     }
   }
 });
 ```
 
-The SDK will check the device's VRAM estimate and select the appropriate model tier automatically. All grades (S/A/B/C) support local inference.
+The SDK maps device grades to tier keys: S and A grades use `high`, B grade uses `medium`, and C grade uses `low`. All grades support local inference.
 
 ## WebWorker Execution
 
@@ -153,7 +152,7 @@ const client = createClient({
       return 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
     }
     if (stats.grade === 'B') {
-      return 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+      return 'Phi-3.5-mini-instruct-q4f16_1-MLC';
     }
     // Grade C or unsupported
     return 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';

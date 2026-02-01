@@ -64,10 +64,10 @@ type DeviceGrade = 'S' | 'A' | 'B' | 'C';
 ```
 
 **Grades:**
-- `'S'` - High-end (≥8GB VRAM) - Can run large models like Llama-3.1-8B
-- `'A'` - Mid-high (≥4GB VRAM) - Can run medium models like Qwen2.5-3B
-- `'B'` - Mid-low (≥2GB VRAM) - Can run small models like Qwen2.5-1.5B
-- `'C'` - Low-end (&lt;2GB VRAM) - Limited to lightweight models like Qwen2.5-1.5B
+- `'S'` - High-end (≥8GB VRAM) - Uses high tier: Llama-3.1-8B
+- `'A'` - Mid-high (≥4GB VRAM) - Uses high tier: Llama-3.1-8B
+- `'B'` - Mid-low (≥2GB VRAM) - Uses medium tier: Phi-3.5-mini-instruct
+- `'C'` - Low-end (&lt;2GB VRAM) - Uses low tier: Qwen2.5-1.5B
 
 **Note:** All grades support local inference. Grade C uses optimized lightweight models.
 
@@ -144,11 +144,8 @@ if (!cap.webgpu) {
   // Use cloud-only mode
 }
 
-if (cap.grade === 'S' || cap.grade === 'A') {
-  enableLocalInference();
-} else {
-  showCloudFallbackWarning();
-}
+// All grades support local inference when WebGPU is available
+enableLocalInference();
 ```
 
 ### Display device info in UI
@@ -200,9 +197,11 @@ switch (cap.grade) {
     model = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
     break;
   case 'A':
-    model = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+    model = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
     break;
   case 'B':
+    model = 'Phi-3.5-mini-instruct-q4f16_1-MLC';
+    break;
   case 'C':
     model = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
     break;

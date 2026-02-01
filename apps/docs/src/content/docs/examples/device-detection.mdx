@@ -14,7 +14,7 @@ const capability = await checkCapability();
 
 console.log('WebGPU available:', capability.webgpu);
 console.log('Device grade:', capability.grade);
-console.log('Estimated VRAM:', capability.vramGB, 'GB');
+console.log('GPU VRAM:', capability.gpu?.vram, 'MB');
 console.log('GPU info:', capability.gpu);
 ```
 
@@ -24,12 +24,14 @@ console.log('GPU info:', capability.gpu);
 {
   webgpu: true,           // WebGPU API available
   grade: 'A',             // Device grade: S, A, B, or C
-  vramGB: 8.2,           // Estimated VRAM in GB
   gpu: {
     vendor: 'Apple',
-    architecture: 'M1',
-    maxStorageBufferBindingSize: 8589934592
-  }
+    name: 'Apple M1 Pro',
+    vram: 5120            // Estimated VRAM in MB
+  },
+  connection: { type: 'wifi', downlink: 10, saveData: false },
+  battery: { level: 0.85, charging: false },
+  memory: 16
 }
 ```
 
@@ -39,10 +41,10 @@ WebLLM.io assigns grades based on `maxStorageBufferBindingSize` (a proxy for VRA
 
 | Grade | VRAM Estimate | Recommended Model Size | Example Devices |
 |-------|---------------|------------------------|-----------------|
-| **S** | ≥32GB | High-end models | M3 Max, RTX 4090 |
-| **A** | ≥8GB | Standard models (8B params) | M1 Pro, RTX 3060 |
-| **B** | ≥4GB | Optimized models (4B params) | M1, RTX 2060 |
-| **C** | &lt;4GB | Lightweight models (1.5B params) | Integrated GPUs |
+| **S** | ≥8GB | Llama-3.1-8B (high tier) | M2 Max+, RTX 3080+ |
+| **A** | ≥4GB | Llama-3.1-8B (high tier) | M1 Pro, RTX 3060 |
+| **B** | ≥2GB | Phi-3.5-mini (medium tier) | M1, integrated GPUs |
+| **C** | &lt;2GB | Qwen2.5-1.5B (low tier) | Mobile GPUs |
 
 :::note
 All grades support local inference. Grade C devices use lightweight models like Qwen2.5-1.5B-Instruct.
@@ -101,8 +103,8 @@ async function displayDeviceInfo() {
     <div class="device-info">
       <h3>Device Capabilities</h3>
       <ul>
-        <li><strong>GPU:</strong> ${cap.gpu.vendor} ${cap.gpu.architecture || ''}</li>
-        <li><strong>VRAM:</strong> ~${cap.vramGB.toFixed(1)} GB</li>
+        <li><strong>GPU:</strong> ${cap.gpu.vendor} ${cap.gpu.name || ''}</li>
+        <li><strong>VRAM:</strong> ~${cap.gpu?.vram ?? 0} MB</li>
         <li><strong>Grade:</strong> ${cap.grade} (${getGradeDescription(cap.grade)})</li>
         <li><strong>Local Inference:</strong> ✅ Enabled</li>
       </ul>
@@ -166,7 +168,7 @@ function getModelForGrade(grade: string): string {
   const models = {
     'S': 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
     'A': 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-    'B': 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+    'B': 'Phi-3.5-mini-instruct-q4f16_1-MLC',
     'C': 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
   };
   return models[grade] || models['C'];
@@ -268,7 +270,7 @@ async function smartInitialize() {
 
   // Step 2: Display device info
   console.log(`Device Grade: ${capability.grade}`);
-  console.log(`Estimated VRAM: ${capability.vramGB.toFixed(1)}GB`);
+  console.log(`Estimated VRAM: ${capability.gpu?.vram ?? 0}MB`);
   console.log(`GPU: ${capability.gpu.vendor}`);
 
   // Step 3: Check cache status

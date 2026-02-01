@@ -33,7 +33,7 @@ const completion = await client.chat.completions.create({
 
 The SDK decides which backend to use based on:
 
-1. **Device capability** — If WebGPU is unavailable or device grade is too low, cloud is used
+1. **Device capability** — If WebGPU is unavailable (`gpu === null`) or battery is low, cloud is used
 2. **Model loading state** — Cloud responds instantly while local model downloads
 3. **Backend availability** — If one backend fails, the other is tried automatically
 4. **Explicit provider override** — Request-level `provider` parameter forces a specific backend
@@ -44,10 +44,9 @@ The SDK decides which backend to use based on:
 const client = createClient({
   local: {
     tiers: {
-      S: 'Llama-3.1-70B-Instruct-q4f16_1-MLC',
-      A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
-      C: null  // Grade C devices fall back to cloud
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',         // S/A grade
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',        // B grade
+      low: null  // C grade devices fall back to cloud
     }
   },
   cloud: {
@@ -58,7 +57,7 @@ const client = createClient({
 });
 ```
 
-On low-end devices (Grade C), cloud is used exclusively. Higher-grade devices run locally.
+When `low` is set to `null`, C grade devices fall back to cloud. By default, all grades (including C) support local inference with a lightweight model.
 
 ## Progressive Loading with Cloud Fallback
 
@@ -189,10 +188,9 @@ Use local inference by default and cloud as a fallback to minimize API costs:
 const client = createClient({
   local: {
     tiers: {
-      S: 'Llama-3.1-70B-Instruct-q4f16_1-MLC',
-      A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
-      C: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'  // Even low-end devices use local
+      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',         // S/A grade
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',        // B grade
+      low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'           // C grade — still local
     }
   },
   cloud: {

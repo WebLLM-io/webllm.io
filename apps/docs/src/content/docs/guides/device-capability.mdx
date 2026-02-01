@@ -12,8 +12,8 @@ import { checkCapability } from '@webllm-io/sdk';
 
 const report = await checkCapability();
 
-if (report.webgpu && report.grade !== 'C') {
-  showLocalAIToggle();
+if (report.webgpu) {
+  showLocalAIToggle();  // All grades (S/A/B/C) support local inference
 } else {
   showCloudOnlyBadge();
 }
