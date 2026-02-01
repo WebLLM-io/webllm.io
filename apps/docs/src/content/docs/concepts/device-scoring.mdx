@@ -56,11 +56,11 @@ async function detectDeviceGrade(): Promise<'S' | 'A' | 'B' | 'C'> {
   }
 
   const maxBufferSize = adapter.limits.maxStorageBufferBindingSize
-  const estimatedVRAM_MB = Math.floor(maxBufferSize / (1024 * 1024))
+  const vramMB = Math.floor(maxBufferSize / (1024 * 1024))
 
-  if (estimatedVRAM_MB >= 8192) return 'S'
-  if (estimatedVRAM_MB >= 4096) return 'A'
-  if (estimatedVRAM_MB >= 2048) return 'B'
+  if (vramMB >= 8192) return 'S'
+  if (vramMB >= 4096) return 'A'
+  if (vramMB >= 2048) return 'B'
   return 'C'
 }
 ```
@@ -167,9 +167,11 @@ const capability = await checkCapability()
 console.log(capability)
 // {
 //   webgpu: true,
+//   gpu: { vendor: 'Apple', name: 'Apple M1 Pro', vram: 5120 },
 //   grade: 'A',
-//   estimatedVRAM_MB: 4096,
-//   recommendedModel: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+//   connection: { type: 'wifi', downlink: 10, saveData: false },
+//   battery: { level: 0.85, charging: false },
+//   memory: 16
 // }
 ```
 
@@ -179,7 +181,7 @@ This is useful for debugging or showing system information in your UI:
 // Show capability to user
 const cap = await checkCapability()
 document.getElementById('gpu-info').textContent =
-  `Device Grade: ${cap.grade} (${cap.estimatedVRAM_MB}MB estimated VRAM)`
+  `Device Grade: ${cap.grade} (${cap.gpu?.vram ?? 0}MB estimated VRAM)`
 ```
 
 ## Model Size vs Quality Trade-offs
@@ -272,7 +274,7 @@ Let users know what they're getting:
 ```typescript
 const cap = await checkCapability()
 showNotification(
-  `Running ${cap.recommendedModel} locally (Grade ${cap.grade})`
+  `Running locally on Grade ${cap.grade} device (${cap.gpu?.vram ?? 0}MB VRAM)`
 )
 ```
 

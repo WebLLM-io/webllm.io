@@ -71,10 +71,10 @@ WebLLM.io supports devices across all grades:
 
 | Grade | VRAM | Model Size | Minimum GPU |
 |-------|------|------------|-------------|
-| **S** | ≥32GB | Up to 8GB | RTX 4090, M3 Max |
-| **A** | ≥8GB | ~4.5GB | RTX 3060, M1 Pro |
-| **B** | ≥4GB | ~2.5GB | RTX 2060, M1 |
-| **C** | ≥2GB | ~1.5GB | Integrated GPUs |
+| **S** | ≥8GB | ~5.5GB | RTX 3080+, M2 Max+ |
+| **A** | ≥4GB | ~5.5GB | RTX 3060, M1 Pro |
+| **B** | ≥2GB | ~2.2GB | Integrated GPUs, M1 |
+| **C** | <2GB | ~1.0GB | Mobile GPUs, older laptops |
 
 Even **Grade C** devices (entry-level GPUs) can run local inference using lightweight models like Qwen2.5-1.5B-Instruct.
 
@@ -84,7 +84,7 @@ Even **Grade C** devices (entry-level GPUs) can run local inference using lightw
 import { checkCapability } from '@webllm-io/sdk';
 
 const cap = await checkCapability();
-console.log('Estimated VRAM:', cap.vramGB, 'GB');
+console.log('GPU VRAM:', cap.gpu?.vram, 'MB');
 console.log('Device Grade:', cap.grade);
 ```
 
@@ -171,17 +171,6 @@ const client = await createClient({
 
 **Yes!** Any OpenAI-compatible API works:
 
-**Anthropic Claude:**
-```typescript
-const client = await createClient({
-  cloud: {
-    baseURL: 'https://api.anthropic.com/v1',
-    apiKey: 'sk-ant-...',
-    model: 'claude-3-5-sonnet-20241022'
-  }
-});
-```
-
 **Azure OpenAI:**
 ```typescript
 const client = await createClient({
@@ -213,7 +202,7 @@ const client = await createClient({
 Model sizes vary by device grade:
 
 - **Grade S/A**: ~4.5GB (Llama-3.1-8B)
-- **Grade B**: ~2.5GB (Qwen2.5-3B)
+- **Grade B**: ~2.2GB (Phi-3.5-mini-instruct)
 - **Grade C**: ~1.5GB (Qwen2.5-1.5B)
 
 Models are downloaded once and cached in OPFS (Origin Private File System) for future use.

@@ -25,7 +25,7 @@
             Millisecond device capability detection. Know if local AI is worth it before loading any model.
           </p>
           <pre class="code-block stage-code"><code><span class="keyword">const</span> cap = <span class="keyword">await</span> <span class="function">checkCapability</span>();
-<span class="keyword">if</span> (cap.grade !== <span class="string">'unsupported'</span>) <span class="function">showLocalAIToggle</span>();</code></pre>
+<span class="keyword">if</span> (cap.webgpu) <span class="function">showLocalAIToggle</span>();</code></pre>
         </div>
       </div>
 

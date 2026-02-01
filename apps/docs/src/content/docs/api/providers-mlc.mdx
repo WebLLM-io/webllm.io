@@ -59,9 +59,9 @@ interface TiersConfig {
 ```
 
 **Tier mapping:**
-- `high` - Used for grade S (≥8GB VRAM)
-- `medium` - Used for grade A (≥4GB VRAM)
-- `low` - Used for grades B and C (&lt;4GB VRAM)
+- `high` - Used for grades S and A (≥4GB VRAM)
+- `medium` - Used for grade B (≥2GB VRAM)
+- `low` - Used for grade C (&lt;2GB VRAM)
 
 **Values:**
 - Model ID string (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`)
@@ -72,7 +72,7 @@ interface TiersConfig {
 ```ts
 {
   high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-  medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+  medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
   low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
 }
 ```
@@ -116,7 +116,7 @@ const client = createClient({
 ```ts
 const client = createClient({
   local: mlc({
-    model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC'
+    model: 'Phi-3.5-mini-instruct-q4f16_1-MLC'
   })
 });
 // Always uses Qwen2.5-3B regardless of device capability
@@ -129,7 +129,7 @@ const client = createClient({
   local: mlc({
     tiers: {
       high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
       low: null  // Disable local inference on low-end devices
     }
   })
@@ -166,7 +166,7 @@ const client = createClient({
   local: mlc({
     tiers: {
       high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
       low: null  // Low-end devices fall back to cloud
     }
   }),
@@ -210,7 +210,7 @@ const cap = await checkCapability();
 const client = createClient({
   local: mlc({
     model: cap.grade === 'S' ? 'Llama-3.1-8B-Instruct-q4f16_1-MLC' :
-           cap.grade === 'A' ? 'Qwen2.5-3B-Instruct-q4f16_1-MLC' :
+           cap.grade === 'A' ? 'Phi-3.5-mini-instruct-q4f16_1-MLC' :
            'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
     useCache: cap.grade !== 'C',  // Disable cache on low-end
     useWebWorker: true
@@ -237,7 +237,7 @@ The `mlc()` provider works with MLC-compiled models from the [@mlc-ai/web-llm](h
 
 **Common models:**
 - `Llama-3.1-8B-Instruct-q4f16_1-MLC` (requires ~4.5GB VRAM)
-- `Qwen2.5-3B-Instruct-q4f16_1-MLC` (requires ~2GB VRAM)
+- `Phi-3.5-mini-instruct-q4f16_1-MLC` (requires ~2GB VRAM)
 - `Qwen2.5-1.5B-Instruct-q4f16_1-MLC` (requires ~1GB VRAM)
 
 For a full list of available models, see the [MLC Web LLM model library](https://github.com/mlc-ai/web-llm/blob/main/src/config.ts).
