@@ -175,6 +175,17 @@ body {
 
 .input-field input:focus { border-color: var(--accent); }
 
+.model-list-link {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-top: 4px;
+  transition: color 0.2s;
+}
+
+.model-list-link:hover { color: var(--accent); }
+
 .toggle-field {
   display: flex;
   justify-content: space-between;
@@ -216,6 +227,71 @@ body {
 }
 
 .secondary-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+/* Code Snippet Panel */
+.code-snippet-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.code-snippet-panel summary {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.code-snippet-panel summary::-webkit-details-marker { display: none; }
+
+.code-snippet-panel summary::before {
+  content: '▸ ';
+  font-size: 0.7rem;
+}
+
+.code-snippet-panel[open] summary::before { content: '▾ '; }
+
+.code-snippet-panel summary:hover { color: var(--text-primary); }
+
+.code-wrapper {
+  position: relative;
+  border-top: 1px solid var(--border-color);
+}
+
+.code-wrapper pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.code-wrapper code {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  white-space: pre;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 1;
+}
+
+.copy-btn:hover { color: var(--text-primary); border-color: var(--accent); }
 
 .full-width { width: 100%; }
 

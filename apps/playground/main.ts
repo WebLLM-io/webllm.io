@@ -51,6 +51,8 @@ const settingRetries = document.getElementById('setting-retries') as HTMLInputEl
 
 const applySettingsBtn = document.getElementById('apply-settings-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+const codeContent = document.getElementById('code-content')!;
+const copyCodeBtn = document.getElementById('copy-code-btn') as HTMLButtonElement;
 
 const progressContainer = document.getElementById('progress-container')!;
 const progressFill = document.getElementById('progress-fill')!;
@@ -134,6 +136,60 @@ function updateSettingsVisibility(mode: string) {
       isCloud ? group.classList.add('active') : group.classList.remove('active');
     }
   });
+}
+
+// --- Code Snippet ---
+function generateCodeSnippet() {
+  const config = collectConfig();
+  const lines: string[] = ['import { createClient } from "@webllm-io/sdk";', '', 'const client = createClient({'];
+
+  if (config.mode === 'local') {
+    const localProps: string[] = [];
+    if (config.localModel) localProps.push(`    model: "${config.localModel}"`);
+    if (!config.localWebWorker) localProps.push('    useWebWorker: false');
+    if (!config.localCache) localProps.push('    useCache: false');
+    if (localProps.length > 0) {
+      lines.push('  local: {');
+      lines.push(localProps.join(',\n'));
+      lines.push('  },');
+    }
+  } else if (config.mode === 'cloud') {
+    lines.push('  local: false,');
+    if (config.cloudBaseURL) {
+      lines.push('  cloud: {');
+      const cloudProps: string[] = [`    baseURL: "${config.cloudBaseURL}"`];
+      if (config.cloudApiKey) cloudProps.push(`    apiKey: "${config.cloudApiKey}"`);
+      if (config.cloudModel) cloudProps.push(`    model: "${config.cloudModel}"`);
+      if (config.cloudTimeout) cloudProps.push(`    timeout: ${config.cloudTimeout}`);
+      if (config.cloudRetries) cloudProps.push(`    retries: ${config.cloudRetries}`);
+      lines.push(cloudProps.join(',\n'));
+      lines.push('  },');
+    }
+  } else {
+    // auto mode
+    const localProps: string[] = [];
+    if (config.localModel) localProps.push(`    model: "${config.localModel}"`);
+    if (!config.localWebWorker) localProps.push('    useWebWorker: false');
+    if (!config.localCache) localProps.push('    useCache: false');
+    if (localProps.length > 0) {
+      lines.push('  local: {');
+      lines.push(localProps.join(',\n'));
+      lines.push('  },');
+    }
+    if (config.cloudBaseURL) {
+      lines.push('  cloud: {');
+      const cloudProps: string[] = [`    baseURL: "${config.cloudBaseURL}"`];
+      if (config.cloudApiKey) cloudProps.push(`    apiKey: "${config.cloudApiKey}"`);
+      if (config.cloudModel) cloudProps.push(`    model: "${config.cloudModel}"`);
+      if (config.cloudTimeout) cloudProps.push(`    timeout: ${config.cloudTimeout}`);
+      if (config.cloudRetries) cloudProps.push(`    retries: ${config.cloudRetries}`);
+      lines.push(cloudProps.join(',\n'));
+      lines.push('  },');
+    }
+  }
+
+  lines.push('});');
+  codeContent.textContent = lines.join('\n');
 }
 
 // --- SDK Integration ---
@@ -296,6 +352,7 @@ modeTabs.forEach(tab => {
     tab.classList.add('active');
     const mode = tab.getAttribute('data-mode')!;
     updateSettingsVisibility(mode);
+    generateCodeSnippet();
     initClient();
   });
 });
@@ -337,8 +394,27 @@ clearBtn.addEventListener('click', () => {
   if (window.innerWidth <= 768) closeSidebar();
 });
 
+// Code snippet: update on input changes
+const settingInputs = [
+  settingLocalModel, settingLocalWorker, settingLocalCache,
+  settingBaseURL, settingApiKey, settingModel, settingTimeout, settingRetries,
+];
+settingInputs.forEach(el => {
+  el.addEventListener('input', generateCodeSnippet);
+  el.addEventListener('change', generateCodeSnippet);
+});
+
+copyCodeBtn.addEventListener('click', () => {
+  const code = codeContent.textContent || '';
+  navigator.clipboard.writeText(code).then(() => {
+    copyCodeBtn.textContent = 'Copied!';
+    setTimeout(() => { copyCodeBtn.textContent = 'Copy'; }, 1500);
+  });
+});
+
 // --- Boot ---
 const initialConfig = loadConfig();
 syncUIWithConfig(initialConfig);
+generateCodeSnippet();
 detectCapability();
 initClient();

@@ -106,6 +106,14 @@ The playground includes a collapsible Settings panel with **Local** and **Cloud*
 
 Settings are persisted in localStorage under the key `webllm-playground-config` and restored on page load. Click "Apply & Reinitialize" to apply changes.
 
+#### Model List Link
+
+Below the Local Model ID input, a "Browse available models →" link points to the MLC web-llm model config on GitHub (`https://github.com/mlc-ai/web-llm/blob/main/src/config.ts`). Opens in a new tab.
+
+#### Integration Code Snippet
+
+The sidebar footer contains a collapsible "Integration Code" panel (`<details>`) that shows a live `createClient()` code snippet matching current settings. The snippet updates reactively when mode tabs or input fields change. A "Copy" button copies the code to clipboard.
+
 #### Model Tag
 
 Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-Instruct-q4f16_1-MLC` or `gpt-4o-mini`) as an italic tag below the message content, extracted from the first streaming chunk's `model` field.
