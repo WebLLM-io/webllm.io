@@ -7,6 +7,9 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'WebLLM.io',
+      components: {
+        SiteTitle: './src/components/SiteTitle.astro',
+      },
       social: {
         github: 'https://github.com/WebLLM-io/webllm.io',
         'x.com': 'https://x.com/webllm_io',
