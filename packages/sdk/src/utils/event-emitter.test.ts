@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from './event-emitter.js';
 
-interface TestEvents {
+type TestEvents = {
   message: string;
   count: number;
   empty: undefined;
-}
+};
 
 describe('EventEmitter', () => {
   it('should call handler when event is emitted', () => {
