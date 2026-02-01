@@ -126,8 +126,15 @@ const ai = createClient({
 pnpm install
 pnpm build
 pnpm test
-pnpm --filter @webllm-io/playground dev
 ```
+
+### Apps
+
+| App | Description | Dev Command | Port |
+|---|---|---|---|
+| `apps/web` | Landing page | `pnpm --filter @webllm-io/web dev` | 4321 |
+| `apps/docs` | Documentation (Starlight) | `pnpm --filter @webllm-io/docs dev` | 4322 |
+| `apps/playground` | Interactive playground | `pnpm --filter @webllm-io/playground dev` | 5173 |
 
 ## License
 
