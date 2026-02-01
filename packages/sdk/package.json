@@ -35,6 +35,15 @@
       }
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WebLLM-io/webllm.io.git",
+    "directory": "packages/sdk"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "files": [
     "dist"
   ],

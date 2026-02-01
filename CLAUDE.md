@@ -158,7 +158,7 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 ### CI/CD Workflows
 
 - **`.github/workflows/deploy.yml`** — Deploys `dist/site/` to Cloudflare Pages on push to main
-- **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main (uses npm Trusted Publishing via OIDC, no token needed)
+- **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main (uses npm Trusted Publishing via OIDC, no token needed). Requires Node 24+ (npm >= 11.5.1 for OIDC support). `changesets/action` only creates version PRs; publishing is a separate step to avoid `.npmrc` conflicts with OIDC auth.
 
 ### Required GitHub Secrets
 
@@ -169,10 +169,18 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 
 ### npm Trusted Publishing
 
-The release workflow uses OIDC-based Trusted Publishing instead of an NPM_TOKEN. Configure it on npmjs.com:
+The release workflow uses OIDC-based Trusted Publishing instead of an NPM_TOKEN. Key requirements:
+
+- **Node 24+** — npm >= 11.5.1 is required for OIDC token exchange
+- **No `registry-url`** in `actions/setup-node` — avoids `.npmrc` token placeholders that block OIDC fallback
+- **Separate publish step** — `changesets/action` only manages version PRs; `pnpm changeset publish` runs independently with `NPM_CONFIG_PROVENANCE` and `NPM_CONFIG_REGISTRY` env vars
+- **`publishConfig.access: "public"`** in `packages/sdk/package.json` — required for scoped packages
+- **`repository.url`** in `packages/sdk/package.json` — required for provenance verification
+
+Configure on npmjs.com:
 
 1. Go to `@webllm-io/sdk` package settings → Publishing access → Trusted Publishing
-2. Add: Repository `WebLLM-io/webllm.io`, Workflow `release.yml`
+2. Add: Repository `WebLLM-io/webllm.io`, Workflow `release.yml`, Environment: (leave empty)
 
 ## Key Dependencies
 

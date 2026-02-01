@@ -20,18 +20,24 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm build
 
-      - uses: changesets/action@v1
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1
         with:
-          publish: pnpm changeset publish
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: pnpm changeset publish
+        env:
           NPM_CONFIG_PROVENANCE: true
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
