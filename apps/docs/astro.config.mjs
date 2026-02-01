@@ -2,7 +2,8 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
-  site: 'https://webllm.io/docs',
+  site: 'https://webllm.io',
+  base: '/docs',
   integrations: [
     starlight({
       title: 'WebLLM.io',

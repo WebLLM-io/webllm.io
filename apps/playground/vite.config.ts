@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/playground/',
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
