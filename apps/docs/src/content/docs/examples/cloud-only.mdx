@@ -100,21 +100,6 @@ const client = await createClient({
 
 Any OpenAI-compatible API works:
 
-### Anthropic Claude (via OpenAI SDK compatibility)
-
-```typescript
-const client = await createClient({
-  cloud: {
-    baseURL: 'https://api.anthropic.com/v1',
-    apiKey: 'sk-ant-...',
-    model: 'claude-3-5-sonnet-20241022',
-    headers: {
-      'anthropic-version': '2023-06-01'
-    }
-  }
-});
-```
-
 ### Azure OpenAI
 
 ```typescript
@@ -188,7 +173,7 @@ try {
 
 Cloud-only mode is ideal when:
 
-- ✅ You need access to the latest frontier models (GPT-4, Claude, etc.)
+- ✅ You need access to the latest frontier models (GPT-4, etc.)
 - ✅ User devices don't support WebGPU
 - ✅ You want to minimize bundle size (no local inference engine)
 - ✅ Your application already has cloud API infrastructure

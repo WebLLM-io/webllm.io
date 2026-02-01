@@ -95,7 +95,7 @@ const client = createClient({
   local: {
     tiers: {
       high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
+      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
     },
     useCache: true,
@@ -123,12 +123,9 @@ const client = createClient({
     useWebWorker: true
   }),
   cloud: fetchSSE({
-    baseURL: 'https://api.anthropic.com/v1',
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-3-5-sonnet-20241022',
-    headers: {
-      'anthropic-version': '2023-06-01'
-    }
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini'
   })
 });
 ```
@@ -139,7 +136,7 @@ const client = createClient({
 const client = createClient({
   local: (stats) => {
     if (stats.vram > 8000) return 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
-    if (stats.vram > 4000) return 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+    if (stats.vram > 4000) return 'Phi-3.5-mini-instruct-q4f16_1-MLC';
     return 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
   },
   cloud: {

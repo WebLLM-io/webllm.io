@@ -153,12 +153,10 @@ import { fetchSSE } from '@webllm-io/sdk/providers/fetch'
 // Input: fetchSSE() provider function
 const client = createClient({
   cloud: fetchSSE({
-    baseURL: 'https://api.anthropic.com/v1',
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-3-5-sonnet-20241022',
-    headers: {
-      'anthropic-version': '2023-06-01'
-    }
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o',
+    timeout: 60000
   })
 })
 // Resolves to: fetchSSE({ ... }) (no transformation)
@@ -393,7 +391,7 @@ const client = createClient({
 
 ### Cloud Provider Example
 
-Implementing a custom cloud provider for Anthropic:
+Implementing a custom cloud provider for Anthropic (requires a custom provider since Anthropic uses `/v1/messages`, not the OpenAI-compatible `/v1/chat/completions` format):
 
 ```typescript
 import type { CloudFn } from '@webllm-io/sdk'

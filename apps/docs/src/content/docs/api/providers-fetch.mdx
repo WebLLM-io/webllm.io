@@ -61,7 +61,6 @@ Base URL for the Chat Completions API endpoint.
 **Examples:**
 - OpenAI: `https://api.openai.com/v1`
 - Azure OpenAI: `https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT`
-- Anthropic: `https://api.anthropic.com/v1`
 - Custom: `https://your-api.example.com/v1`
 
 ##### `apiKey` (optional)
@@ -91,7 +90,7 @@ Custom HTTP headers for all requests.
 **Example:**
 ```ts
 headers: {
-  'anthropic-version': '2023-06-01',
+  'api-key': 'YOUR_AZURE_KEY',
   'x-custom-header': 'value'
 }
 ```
@@ -141,22 +140,6 @@ const client = createClient({
     model: 'gpt-4o',
     timeout: 60000,
     retries: 5
-  })
-});
-```
-
-### Anthropic Claude
-
-```ts
-const client = createClient({
-  local: false,
-  cloud: fetchSSE({
-    baseURL: 'https://api.anthropic.com/v1',
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-3-5-sonnet-20241022',
-    headers: {
-      'anthropic-version': '2023-06-01'
-    }
   })
 });
 ```
@@ -341,7 +324,6 @@ try {
 The `fetchSSE()` provider implements OpenAI's Chat Completions API format. It should work with any provider that follows this standard, including:
 
 - **OpenAI** - Native support
-- **Anthropic** - Compatible with custom headers
 - **Azure OpenAI** - Compatible with custom base URL
 - **Together AI** - Compatible
 - **Anyscale** - Compatible
