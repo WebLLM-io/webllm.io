@@ -128,6 +128,36 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 - CapabilityReport examples MUST match `packages/sdk/src/capability/types.ts`
 - Cloud provider examples must only list OpenAI-compatible APIs
 
+## Deployment
+
+- **Hosting**: Cloudflare Pages, single domain `webllm.io`
+- **Project name**: `webllm-io`
+
+### URL Mapping
+
+| App | URL | Base Path Config |
+|---|---|---|
+| Landing Page (`apps/web`) | `webllm.io/` | — (root) |
+| Documentation (`apps/docs`) | `webllm.io/docs/` | `base: '/docs'` in astro.config.mjs |
+| Playground (`apps/playground`) | `webllm.io/playground/` | `base: '/playground/'` in vite.config.ts |
+
+### Build
+
+`pnpm build:site` runs `turbo build` then `scripts/build-site.sh` which merges all three app dist outputs into `dist/site/`.
+
+### CI/CD Workflows
+
+- **`.github/workflows/deploy.yml`** — Deploys `dist/site/` to Cloudflare Pages on push to main
+- **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main
+
+### Required GitHub Secrets
+
+| Secret | Purpose |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare Pages deploy (wrangler) |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account identifier |
+| `NPM_TOKEN` | npm publish authentication |
+
 ## Key Dependencies
 
 - `@mlc-ai/web-llm` — Optional peer dep for local MLC inference
