@@ -43,6 +43,55 @@
             <span class="status-label">Grade</span>
             <span id="device-grade" class="status-value">—</span>
           </div>
+          <div class="status-item">
+            <span class="status-label">Model</span>
+            <span id="local-model" class="status-value">—</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Status</span>
+            <span id="pipeline-status" class="status-value pending">Idle</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Battery</span>
+            <span id="battery-info" class="status-value">—</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Connection</span>
+            <span id="connection-info" class="status-value">—</span>
+          </div>
+
+          <!-- Progress Section (inline in status card) -->
+          <div id="progress-section" class="status-progress hidden">
+            <div class="progress-info-inline">
+              <span id="progress-text" class="progress-text-inline">Loading model...</span>
+              <div class="progress-track">
+                <div id="progress-fill"></div>
+              </div>
+            </div>
+            <div class="pipeline-stages">
+              <div class="pipeline-step active" data-stage="download">
+                <span class="pipeline-dot"></span>
+                <span class="pipeline-label">Download</span>
+              </div>
+              <div class="pipeline-step" data-stage="compile">
+                <span class="pipeline-dot"></span>
+                <span class="pipeline-label">Compile</span>
+              </div>
+              <div class="pipeline-step" data-stage="ready">
+                <span class="pipeline-dot"></span>
+                <span class="pipeline-label">Ready</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error Section (inline in status card) -->
+          <div id="error-section" class="status-error hidden">
+            <div id="error-message" class="error-message-inline"></div>
+            <div class="error-actions-inline">
+              <button id="error-retry-btn" class="error-btn-retry">Retry</button>
+              <button id="error-dismiss-btn" class="error-btn-dismiss">Dismiss</button>
+            </div>
+          </div>
         </div>
 
         <!-- Mode Selector -->
@@ -139,19 +188,6 @@
         <span>Playground</span>
       </header>
       
-      <!-- Progress Bar (Overlay) -->
-      <div id="progress-container" class="progress-overlay hidden">
-        <div class="progress-card">
-          <div class="loader-spinner"></div>
-          <div class="progress-info">
-            <span id="progress-text">Loading model...</span>
-            <div class="progress-track">
-              <div id="progress-fill"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Messages Stream -->
       <div id="messages">
         <div class="empty-state">

@@ -14,7 +14,16 @@ interface PlaygroundConfig {
   cloudRetries: string;
 }
 
+type PipelineStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 const CONFIG_KEY = 'webllm-playground-config-v2';
+
+const GRADE_THRESHOLDS: Record<string, string> = {
+  S: '\u2265 8192 MB',
+  A: '\u2265 4096 MB',
+  B: '\u2265 2048 MB',
+  C: '< 2048 MB',
+};
 
 // --- DOM Elements ---
 const sidebar = document.getElementById('sidebar')!;
@@ -39,6 +48,10 @@ const settingsGroups = document.querySelectorAll('.settings-group');
 const webgpuStatus = document.getElementById('webgpu-status')!;
 const deviceGrade = document.getElementById('device-grade')!;
 const vramInfo = document.getElementById('vram-info')!;
+const localModelEl = document.getElementById('local-model')!;
+const pipelineStatusEl = document.getElementById('pipeline-status')!;
+const batteryInfoEl = document.getElementById('battery-info')!;
+const connectionInfoEl = document.getElementById('connection-info')!;
 
 const settingLocalModel = document.getElementById('setting-local-model') as HTMLInputElement;
 const settingLocalWorker = document.getElementById('setting-local-worker') as HTMLInputElement;
@@ -54,9 +67,15 @@ const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 const codeContent = document.getElementById('code-content')!;
 const copyCodeBtn = document.getElementById('copy-code-btn') as HTMLButtonElement;
 
-const progressContainer = document.getElementById('progress-container')!;
+const progressSection = document.getElementById('progress-section')!;
 const progressFill = document.getElementById('progress-fill')!;
 const progressText = document.getElementById('progress-text')!;
+const errorSection = document.getElementById('error-section')!;
+const errorMessage = document.getElementById('error-message')!;
+const errorRetryBtn = document.getElementById('error-retry-btn') as HTMLButtonElement;
+const errorDismissBtn = document.getElementById('error-dismiss-btn') as HTMLButtonElement;
+
+const pipelineSteps = document.querySelectorAll('.pipeline-step');
 
 const messagesDiv = document.getElementById('messages')!;
 const userInput = document.getElementById('user-input') as HTMLTextAreaElement;
@@ -66,7 +85,51 @@ const abortBtn = document.getElementById('abort-btn') as HTMLButtonElement;
 // --- State ---
 let client: WebLLMClient | null = null;
 let abortController: AbortController | null = null;
+let lastRouteDecision: 'local' | 'cloud' | null = null;
+let pipelineStatus: PipelineStatus = 'idle';
 const chatHistory: Message[] = [];
+
+// --- Pipeline Status ---
+function setPipelineStatus(status: PipelineStatus) {
+  pipelineStatus = status;
+  const labels: Record<PipelineStatus, string> = {
+    idle: 'Idle',
+    loading: 'Loading',
+    ready: 'Ready',
+    error: 'Error',
+  };
+  const classes: Record<PipelineStatus, string> = {
+    idle: 'status-value pending',
+    loading: 'status-value pending',
+    ready: 'status-value success',
+    error: 'status-value error',
+  };
+  pipelineStatusEl.textContent = labels[status];
+  pipelineStatusEl.className = classes[status];
+}
+
+function updateStatusCard() {
+  if (!client) return;
+  const s = client.status();
+  localModelEl.textContent = s.localModel || '\u2014';
+  localModelEl.title = s.localModel || '';
+}
+
+// --- Pipeline Steps ---
+function updatePipelineStage(stage: string) {
+  const stages = ['download', 'compile', 'ready'];
+  const currentIdx = stages.indexOf(stage);
+  pipelineSteps.forEach((step) => {
+    const stepStage = step.getAttribute('data-stage')!;
+    const stepIdx = stages.indexOf(stepStage);
+    step.classList.remove('active', 'complete');
+    if (stepIdx < currentIdx) {
+      step.classList.add('complete');
+    } else if (stepIdx === currentIdx) {
+      step.classList.add('active');
+    }
+  });
+}
 
 // --- Config Logic ---
 function loadConfig(): PlaygroundConfig {
@@ -202,8 +265,34 @@ async function detectCapability() {
     const report = await checkCapability();
     webgpuStatus.textContent = report.webgpu ? 'Available' : 'Unavailable';
     webgpuStatus.className = `status-value ${report.webgpu ? 'success' : 'error'}`;
-    deviceGrade.textContent = report.grade;
-    vramInfo.textContent = report.gpu ? `${report.gpu.vram}MB` : 'Unknown';
+
+    const hint = GRADE_THRESHOLDS[report.grade] || '';
+    deviceGrade.innerHTML = `${report.grade} <span class="status-hint">(${hint})</span>`;
+
+    vramInfo.textContent = report.gpu ? `${report.gpu.vram} MB` : 'Unknown';
+
+    // Battery
+    if (report.battery) {
+      const pct = Math.round(report.battery.level * 100);
+      const charging = report.battery.charging ? ' (charging)' : '';
+      batteryInfoEl.textContent = `${pct}%${charging}`;
+    } else {
+      batteryInfoEl.textContent = 'N/A';
+    }
+
+    // Connection
+    if (report.connection) {
+      const parts: string[] = [];
+      if (report.connection.type && report.connection.type !== 'unknown') {
+        parts.push(report.connection.type.toUpperCase());
+      }
+      if (report.connection.downlink > 0) {
+        parts.push(`${report.connection.downlink} Mbps`);
+      }
+      connectionInfoEl.textContent = parts.length > 0 ? parts.join(' \u00b7 ') : 'Unknown';
+    } else {
+      connectionInfoEl.textContent = 'N/A';
+    }
   } catch {
     webgpuStatus.textContent = 'Error';
     webgpuStatus.className = 'status-value error';
@@ -232,41 +321,105 @@ function buildCloudConfig(config: PlaygroundConfig) {
   };
 }
 
+function showProgressLoading() {
+  progressSection.classList.remove('hidden');
+  errorSection.classList.add('hidden');
+  setPipelineStatus('loading');
+}
+
+function showProgressError(msg: string) {
+  progressSection.classList.add('hidden');
+  errorSection.classList.remove('hidden');
+  errorMessage.textContent = msg;
+  setPipelineStatus('error');
+}
+
+function hideProgress() {
+  progressSection.classList.add('hidden');
+  errorSection.classList.add('hidden');
+}
+
 function initClient() {
   if (client) client.dispose();
-  
+
   const config = collectConfig();
   saveConfig(config);
 
   const cloud = buildCloudConfig(config);
   const local = buildLocalConfig(config);
 
+  lastRouteDecision = null;
+
   try {
     if (config.mode === 'local') {
-      client = createClient({ local, onProgress: handleProgress });
+      client = createClient({
+        local,
+        onProgress: handleProgress,
+        onRoute: handleRoute,
+        onError: handleInitError,
+      });
     } else if (config.mode === 'cloud') {
       if (!cloud) {
         addSystemMessage('Please provide a Cloud Base URL.');
         return;
       }
-      client = createClient({ local: false, cloud });
+      client = createClient({
+        local: false,
+        cloud,
+        onRoute: handleRoute,
+      });
     } else {
-      client = createClient({ local, cloud, onProgress: handleProgress });
+      client = createClient({
+        local,
+        cloud,
+        onProgress: handleProgress,
+        onRoute: handleRoute,
+        onError: handleInitError,
+      });
     }
     addSystemMessage(`Client initialized: ${config.mode.toUpperCase()} mode`);
     sendBtn.disabled = false;
+    setPipelineStatus('idle');
+    updateStatusCard();
   } catch (err) {
     addSystemMessage(`Init Error: ${(err as Error).message}`);
+    setPipelineStatus('error');
   }
 }
 
+function handleRoute(info: { decision: 'local' | 'cloud'; reason: string }) {
+  lastRouteDecision = info.decision;
+}
+
+function handleInitError(err: Error) {
+  showProgressError(err.message);
+}
+
 function handleProgress(p: { stage: string; progress: number; model: string }) {
-  progressContainer.classList.remove('hidden');
+  showProgressLoading();
   const percent = Math.round(p.progress * 100);
   progressFill.style.width = `${percent}%`;
-  progressText.textContent = `${p.stage}: ${p.model} (${percent}%)`;
+  progressText.textContent = `${p.model} (${percent}%)`;
+
+  // Update model name directly from progress event, because
+  // MLCBackend.currentModel is only set after load() resolves,
+  // but progress callbacks fire during the await.
+  localModelEl.textContent = p.model;
+  localModelEl.title = p.model;
+
+  // Map MLC stages to pipeline stages
+  if (p.stage === 'download') {
+    updatePipelineStage('download');
+  } else if (p.stage === 'compile') {
+    updatePipelineStage('compile');
+  } else if (p.stage === 'warmup') {
+    updatePipelineStage('compile');
+  }
+
   if (p.progress >= 1) {
-    setTimeout(() => progressContainer.classList.add('hidden'), 800);
+    updatePipelineStage('ready');
+    setPipelineStatus('ready');
+    setTimeout(() => hideProgress(), 800);
   }
 }
 
@@ -278,42 +431,112 @@ function addMessage(role: 'user' | 'assistant', content: string) {
 
   const msgDiv = document.createElement('div');
   msgDiv.className = `message ${role}`;
-  
+
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
   contentDiv.textContent = content;
-  
+
   msgDiv.appendChild(contentDiv);
   messagesDiv.appendChild(msgDiv);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
   return contentDiv;
 }
 
+function addTypingIndicator(): { container: HTMLDivElement; contentDiv: HTMLDivElement } {
+  const empty = messagesDiv.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'message assistant';
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+
+  const typing = document.createElement('div');
+  typing.className = 'typing-indicator';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  contentDiv.appendChild(typing);
+
+  msgDiv.appendChild(contentDiv);
+  messagesDiv.appendChild(msgDiv);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  return { container: msgDiv, contentDiv };
+}
+
+function createRouteBadge(decision: 'local' | 'cloud'): HTMLSpanElement {
+  const badge = document.createElement('span');
+  badge.className = 'route-badge';
+  if (decision === 'local') {
+    badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>local';
+  } else {
+    badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>cloud';
+  }
+  return badge;
+}
+
 function addSystemMessage(text: string) {
   const div = document.createElement('div');
   div.className = 'system-tag';
-  div.textContent = `• ${text} •`;
+  div.textContent = `\u2022 ${text} \u2022`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+function renderChatError(
+  container: HTMLDivElement,
+  contentDiv: HTMLDivElement,
+  errMsg: string,
+  onRetry: () => void,
+) {
+  contentDiv.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'chat-error-card';
+  card.innerHTML = `
+    <div class="error-title">Request Failed</div>
+    <div class="error-message">${escapeHtml(errMsg)}</div>
+    <div class="error-actions"></div>
+  `;
+  const actions = card.querySelector('.error-actions')!;
+
+  const retryBtn = document.createElement('button');
+  retryBtn.className = 'primary-btn';
+  retryBtn.textContent = 'Retry';
+  retryBtn.addEventListener('click', () => {
+    container.remove();
+    onRetry();
+  });
+  actions.appendChild(retryBtn);
+
+  contentDiv.appendChild(card);
+}
+
+function escapeHtml(str: string): string {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 // --- Chat Actions ---
-async function handleSend() {
-  const text = userInput.value.trim();
+async function handleSend(retryText?: string) {
+  const text = retryText || userInput.value.trim();
   if (!text || !client) return;
 
-  userInput.value = '';
-  userInput.style.height = 'auto';
-  addMessage('user', text);
-  chatHistory.push({ role: 'user', content: text });
+  if (!retryText) {
+    userInput.value = '';
+    userInput.style.height = 'auto';
+    addMessage('user', text);
+    chatHistory.push({ role: 'user', content: text });
+  }
 
   sendBtn.classList.add('hidden');
   abortBtn.classList.remove('hidden');
   abortController = new AbortController();
 
-  const assistantContent = addMessage('assistant', '');
+  lastRouteDecision = null;
+  const { container, contentDiv } = addTypingIndicator();
   let fullContent = '';
   let modelName = '';
+  let firstChunk = true;
 
   try {
     const stream = client.chat.completions.create({
@@ -323,27 +546,50 @@ async function handleSend() {
     });
 
     for await (const chunk of stream as AsyncIterable<ChatCompletionChunk>) {
+      if (firstChunk) {
+        contentDiv.innerHTML = '';
+        firstChunk = false;
+      }
       if (!modelName && chunk.model) modelName = chunk.model;
       const delta = chunk.choices[0]?.delta?.content ?? '';
       fullContent += delta;
-      assistantContent.textContent = fullContent;
+      contentDiv.textContent = fullContent;
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
+
+    // Model tag and route badge
+    const metaContainer = document.createElement('div');
+    metaContainer.style.display = 'flex';
+    metaContainer.style.alignItems = 'center';
+    metaContainer.style.gap = '4px';
+    metaContainer.style.flexWrap = 'wrap';
 
     if (modelName) {
       const tag = document.createElement('span');
       tag.className = 'model-tag';
       tag.textContent = modelName;
-      assistantContent.parentElement?.appendChild(tag);
+      metaContainer.appendChild(tag);
     }
+
+    if (lastRouteDecision) {
+      metaContainer.appendChild(createRouteBadge(lastRouteDecision));
+    }
+
+    if (metaContainer.children.length > 0) {
+      container.appendChild(metaContainer);
+    }
+
     chatHistory.push({ role: 'assistant', content: fullContent });
 
   } catch (err: any) {
-    if (err.name === 'AbortError') {
-      assistantContent.textContent += ' [Interrupted]';
+    if (err.name === 'AbortError' || err.code === 'ABORTED') {
+      if (firstChunk) contentDiv.innerHTML = '';
+      contentDiv.textContent = fullContent + ' [Interrupted]';
     } else {
-      assistantContent.textContent = `Error: ${err.message}`;
-      assistantContent.style.color = 'var(--error)';
+      const lastUserText = text;
+      renderChatError(container, contentDiv, err.message, () => {
+        handleSend(lastUserText);
+      });
     }
   } finally {
     sendBtn.classList.remove('hidden');
@@ -380,7 +626,7 @@ userInput.addEventListener('keydown', (e) => {
   }
 });
 
-sendBtn.addEventListener('click', handleSend);
+sendBtn.addEventListener('click', () => handleSend());
 abortBtn.addEventListener('click', () => abortController?.abort());
 
 applySettingsBtn.addEventListener('click', () => {
@@ -421,6 +667,16 @@ copyCodeBtn.addEventListener('click', () => {
     copyCodeBtn.textContent = 'Copied!';
     setTimeout(() => { copyCodeBtn.textContent = 'Copy'; }, 1500);
   });
+});
+
+// Progress overlay error buttons
+errorRetryBtn.addEventListener('click', () => {
+  hideProgress();
+  initClient();
+});
+
+errorDismissBtn.addEventListener('click', () => {
+  hideProgress();
 });
 
 // --- Boot ---

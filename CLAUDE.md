@@ -26,6 +26,9 @@ pnpm + Turborepo monorepo with the following packages:
 - **Device scoring** — S/A/B/C grades based on maxStorageBufferBindingSize (VRAM proxy); all grades support local inference (C uses Qwen2.5-1.5B-Instruct lightweight model)
 - **VRAM detection via adapter.limits** — Reads `adapter.limits.maxStorageBufferBindingSize` directly (not from a default device, which only returns spec defaults like 128 MB). When the adapter still reports ≤128 MB, a `navigator.deviceMemory`-based heuristic kicks in: Apple Silicon uses 50% of system RAM; other vendors use 25% as a conservative floor. `deviceMemory` is capped at 8 GB by browsers, which naturally prevents over-aggressive model selection.
 - **Explicit opt-in** — Both local and cloud default to disabled; users must explicitly configure at least one engine
+- **Runtime status** — `client.status()` returns `ClientStatus` with `localModel`, `localReady`, `localEnabled`, `cloudEnabled`
+- **Route observability** — `onRoute` callback in `CreateClientOptions` fires on each route decision with `{ decision, reason }`
+- **Error observability** — `onError` callback in `CreateClientOptions` fires when local backend initialization fails
 
 ## SDK Module Layout
 
@@ -116,9 +119,37 @@ Below the Local Model ID input, a "Browse available models →" link points to t
 
 The sidebar footer contains a collapsible "Integration Code" panel (`<details>`) that shows a live `createClient()` code snippet matching current settings. The snippet updates reactively when mode tabs or input fields change. A "Copy" button copies the code to clipboard.
 
-#### Model Tag
+#### Model Tag & Route Badge
 
-Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-Instruct-q4f16_1-MLC` or `gpt-4o-mini`) as an italic tag below the message content, extracted from the first streaming chunk's `model` field.
+Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-Instruct-q4f16_1-MLC` or `gpt-4o-mini`) as a tag below the message content, extracted from the first streaming chunk's `model` field. A route badge (local/cloud icon) appears next to the model tag, showing which backend served the response. Data comes from the SDK `onRoute` callback.
+
+#### Runtime Status Card
+
+The sidebar status card shows 7 fields:
+
+| Field | Source |
+|---|---|
+| WebGPU | `checkCapability()` |
+| VRAM | `checkCapability().gpu.vram` |
+| Grade | `checkCapability().grade` with threshold hint (e.g., "A (>= 4096 MB)") |
+| Model | `client.status().localModel` — resolved model ID |
+| Status | Internal pipeline state: Idle / Loading / Ready / Error |
+| Battery | `checkCapability().battery` — percentage and charging state |
+| Connection | `checkCapability().connection` — type and downlink speed |
+
+#### Pipeline Progress (inline)
+
+Model loading progress is displayed inline within the sidebar status card (not as a floating overlay). Shows a progress bar with model name and percentage, plus a three-stage pipeline indicator (Download -> Compile -> Ready). Each stage transitions from pending -> active -> complete.
+
+On error, the progress section is replaced with an inline error message, a "Retry" button (re-initializes client), and a "Dismiss" button. Both sections are hidden when idle.
+
+#### Typing Indicator
+
+When sending a message, a three-dot bounce animation appears in the assistant bubble until the first streaming chunk arrives.
+
+#### Chat Error & Retry
+
+Chat errors render as inline error cards with a "Retry" button that re-sends the last user message.
 
 ## Conventions
 
