@@ -63,10 +63,16 @@ export type CloudConfig =
   | CloudFn
   | ResolvedCloudBackend;
 
+// --- Route callback ---
+
+export type RouteCallback = (info: { decision: 'local' | 'cloud'; reason: string }) => void;
+
 // --- CreateClient options ---
 
 export interface CreateClientOptions {
   local?: LocalConfig;
   cloud?: CloudConfig;
   onProgress?: ProgressCallback;
+  onRoute?: RouteCallback;
+  onError?: (error: Error) => void;
 }

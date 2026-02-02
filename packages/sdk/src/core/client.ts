@@ -10,6 +10,13 @@ import { WebLLMError } from './errors.js';
 import { logger } from '../utils/logger.js';
 import type { MLCBackend } from '../inference/local/mlc-backend.js';
 
+export interface ClientStatus {
+  localModel: string | null;
+  localReady: boolean;
+  localEnabled: boolean;
+  cloudEnabled: boolean;
+}
+
 export interface WebLLMClient {
   chat: {
     completions: Completions;
@@ -20,11 +27,12 @@ export interface WebLLMClient {
     isLoaded(): boolean;
   };
   capability(): Promise<CapabilityReport>;
+  status(): ClientStatus;
   dispose(): Promise<void>;
 }
 
 export function createClient(options: CreateClientOptions = {}): WebLLMClient {
-  const { local: localConfig, cloud: cloudConfig, onProgress } = options;
+  const { local: localConfig, cloud: cloudConfig, onProgress, onRoute, onError } = options;
 
   const resolvedLocal = resolveLocal(localConfig);
   const resolvedCloud = resolveCloud(cloudConfig);
@@ -61,6 +69,7 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
     } catch (err) {
       logger.warn('Local backend initialization failed:', err);
       localBackend = null;
+      onError?.(err instanceof Error ? err : new Error(String(err)));
     }
   }
 
@@ -68,6 +77,7 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
     getLocalBackend: () => localBackend,
     getCloudBackend: () => cloudBackend,
     getDeviceStats: () => getDeviceContext(),
+    onRoute,
   });
 
   return {
@@ -100,6 +110,15 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
     },
 
     capability: () => checkCapability(),
+
+    status(): ClientStatus {
+      return {
+        localModel: localBackend ? (localBackend as MLCBackend).getModel() : null,
+        localReady: localBackend?.isReady() ?? false,
+        localEnabled: resolvedLocal !== null,
+        cloudEnabled: resolvedCloud !== null,
+      };
+    },
 
     async dispose(): Promise<void> {
       await Promise.all([

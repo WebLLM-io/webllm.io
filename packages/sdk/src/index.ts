@@ -1,7 +1,7 @@
 // Public API
 export { createClient } from './core/client.js';
-export type { WebLLMClient } from './core/client.js';
-export type { CreateClientOptions, LoadProgress, ProgressCallback } from './core/config.js';
+export type { WebLLMClient, ClientStatus } from './core/client.js';
+export type { CreateClientOptions, LoadProgress, ProgressCallback, RouteCallback } from './core/config.js';
 export type {
   LocalConfig,
   LocalObjectConfig,

@@ -6,6 +6,7 @@ import type {
 } from './types.js';
 import type { InferenceBackend } from '../inference/backend.js';
 import type { DeviceStats } from '../capability/types.js';
+import type { RouteCallback } from '../core/config.js';
 import { decideRoute } from '../router/strategy.js';
 import { WebLLMError } from '../core/errors.js';
 
@@ -13,17 +14,20 @@ export interface CompletionsContext {
   getLocalBackend(): InferenceBackend | null;
   getCloudBackend(): InferenceBackend | null;
   getDeviceStats(): Promise<DeviceStats>;
+  onRoute?: RouteCallback;
 }
 
 export function createCompletions(ctx: CompletionsContext): Completions {
   async function resolveBackend(req: ChatCompletionRequest) {
     const stats = await ctx.getDeviceStats();
-    return decideRoute({
+    const route = decideRoute({
       localBackend: ctx.getLocalBackend(),
       cloudBackend: ctx.getCloudBackend(),
       deviceStats: stats,
       forceProvider: req.provider,
     });
+    ctx.onRoute?.({ decision: route.decision, reason: route.context.reason });
+    return route;
   }
 
   function create(req: ChatCompletionRequest & { stream: true }): AsyncIterable<ChatCompletionChunk>;
