@@ -101,6 +101,7 @@ export class FetchBackend implements InferenceBackend {
       model: req.model ?? this.config.model ?? 'default',
       messages: req.messages,
       stream,
+      ...(stream && { stream_options: { include_usage: true } }),
       ...(req.temperature !== undefined && { temperature: req.temperature }),
       ...(req.max_tokens !== undefined && { max_tokens: req.max_tokens }),
       ...(req.response_format && { response_format: req.response_format }),
