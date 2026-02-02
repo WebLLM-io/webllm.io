@@ -51,7 +51,6 @@ const vramInfo = document.getElementById('vram-info')!;
 const localModelEl = document.getElementById('local-model')!;
 const pipelineStatusEl = document.getElementById('pipeline-status')!;
 const batteryInfoEl = document.getElementById('battery-info')!;
-const connectionInfoEl = document.getElementById('connection-info')!;
 const localTokensEl = document.getElementById('local-tokens')!;
 const cloudTokensEl = document.getElementById('cloud-tokens')!;
 
@@ -293,19 +292,6 @@ async function detectCapability() {
       batteryInfoEl.textContent = 'N/A';
     }
 
-    // Connection
-    if (report.connection) {
-      const parts: string[] = [];
-      if (report.connection.type && report.connection.type !== 'unknown') {
-        parts.push(report.connection.type.toUpperCase());
-      }
-      if (report.connection.downlink > 0) {
-        parts.push(`${report.connection.downlink} Mbps`);
-      }
-      connectionInfoEl.textContent = parts.length > 0 ? parts.join(' \u00b7 ') : 'Unknown';
-    } else {
-      connectionInfoEl.textContent = 'N/A';
-    }
   } catch {
     webgpuStatus.textContent = 'Error';
     webgpuStatus.className = 'status-value error';

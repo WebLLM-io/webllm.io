@@ -7,6 +7,5 @@ export type {
   DeviceStats,
   DeviceGrade,
   GpuInfo,
-  ConnectionInfo,
   BatteryInfo,
 } from './types.js';

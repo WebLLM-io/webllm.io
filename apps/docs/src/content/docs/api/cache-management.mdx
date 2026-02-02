@@ -337,7 +337,7 @@ async function smartInitialize() {
   const isCached = await hasModelInCache(modelId);
 
   // Decide whether to use local or cloud
-  const useLocal = isCached || cap.connection.effectiveType === '4g';
+  const useLocal = isCached || cap.grade !== 'C';
 
   const client = createClient({
     local: useLocal ? { model: modelId } : false,

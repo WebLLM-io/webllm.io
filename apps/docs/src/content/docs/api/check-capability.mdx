@@ -3,7 +3,7 @@ title: "checkCapability()"
 description: "Detect device capabilities including WebGPU support, GPU info, VRAM, device grade, and system resources"
 ---
 
-Standalone function to detect device capabilities without creating a client. Returns comprehensive information about WebGPU availability, GPU hardware, estimated VRAM, device performance grade, network connection, battery status, and system memory.
+Standalone function to detect device capabilities without creating a client. Returns comprehensive information about WebGPU availability, GPU hardware, estimated VRAM, device performance grade, battery status, and system memory.
 
 ## Signature
 
@@ -20,7 +20,6 @@ interface CapabilityReport {
   webgpu: boolean;
   gpu: GpuInfo | null;
   grade: DeviceGrade;
-  connection: ConnectionInfo;
   battery: BatteryInfo | null;
   memory: number;
 }
@@ -70,27 +69,6 @@ type DeviceGrade = 'S' | 'A' | 'B' | 'C';
 - `'C'` - Low-end (&lt;2GB VRAM) - Uses low tier: Qwen2.5-1.5B
 
 **Note:** All grades support local inference. Grade C uses optimized lightweight models.
-
-#### `connection`
-
-Network connection information from the Network Information API.
-
-- Type: `ConnectionInfo`
-
-```ts
-interface ConnectionInfo {
-  effectiveType: '4g' | '3g' | '2g' | 'slow-2g' | 'unknown';
-  downlink?: number;
-  rtt?: number;
-  saveData?: boolean;
-}
-```
-
-**Fields:**
-- `effectiveType` - Connection quality estimate
-- `downlink` - Downlink speed in Mbps (optional)
-- `rtt` - Round-trip time in ms (optional)
-- `saveData` - Whether data saver mode is enabled (optional)
 
 #### `battery`
 
@@ -175,7 +153,6 @@ function DeviceInfo() {
         </>
       )}
       <p>RAM: {cap.memory}GB</p>
-      <p>Network: {cap.connection.effectiveType}</p>
       {cap.battery && (
         <p>Battery: {Math.round(cap.battery.level * 100)}%
            {cap.battery.charging && ' (charging)'}
@@ -217,10 +194,6 @@ const client = createClient({
 ```ts
 const cap = await checkCapability();
 
-// Use cloud fallback on slow network
-const useCloud = cap.connection.effectiveType === 'slow-2g' ||
-                 cap.connection.effectiveType === '2g';
-
 // Disable cache on low storage
 const useCache = cap.grade !== 'C';
 
@@ -248,10 +221,6 @@ async function initializeApp() {
     return;
   }
 
-  if (cap.grade === 'C' && cap.connection.effectiveType === 'slow-2g') {
-    showWarning('Slow network detected. Performance may be degraded.');
-  }
-
   // Proceed with initialization
   const client = createClient({
     local: cap.webgpu ? 'auto' : false,
@@ -272,7 +241,6 @@ console.table({
   'GPU': cap.gpu?.name || 'N/A',
   'VRAM': cap.gpu ? `${cap.gpu.vram}MB` : 'N/A',
   'RAM': `${cap.memory}GB`,
-  'Network': cap.connection.effectiveType,
   'Battery': cap.battery ? `${Math.round(cap.battery.level * 100)}%` : 'N/A',
   'Charging': cap.battery?.charging || false
 });
@@ -282,7 +250,6 @@ console.table({
 
 - **WebGPU detection:** All browsers (returns `false` if unsupported)
 - **GPU info:** Chrome 113+, Edge 113+, Safari 18+ (requires WebGPU)
-- **Network info:** Chrome, Edge, Opera (partial support)
 - **Battery info:** Chrome, Edge, Opera (deprecated in some browsers)
 - **Memory info:** Chrome 63+, Edge 79+, Opera 50+
 

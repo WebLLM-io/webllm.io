@@ -28,7 +28,6 @@ interface CapabilityReport {
   webgpu: boolean;          // WebGPU API available
   gpu: GpuInfo | null;      // GPU vendor, name, estimated VRAM
   grade: DeviceGrade;       // 'S' | 'A' | 'B' | 'C'
-  connection: ConnectionInfo;
   battery: BatteryInfo | null;
   memory: number;           // navigator.deviceMemory (GB), 0 if unavailable
 }
@@ -41,16 +40,6 @@ interface GpuInfo {
   vendor: string;  // e.g. 'nvidia', 'apple', 'intel'
   name: string;    // GPU adapter name
   vram: number;    // Estimated VRAM in MB
-}
-```
-
-### ConnectionInfo
-
-```ts
-interface ConnectionInfo {
-  type: string;     // 'wifi', '4g', 'unknown', etc.
-  downlink: number; // Estimated bandwidth in Mbps
-  saveData: boolean; // Data saver mode
 }
 ```
 
@@ -86,11 +75,6 @@ const report = await checkCapability();
 // Only offer local AI on capable devices
 if (!report.webgpu) {
   config.local = false;
-}
-
-// Warn on metered connections
-if (report.connection.saveData || report.connection.downlink < 2) {
-  showDataWarning();
 }
 
 // Skip local on low battery

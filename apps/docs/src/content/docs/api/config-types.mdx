@@ -130,7 +130,6 @@ Hardware information collected during capability detection.
 interface DeviceStats {
   gpu: GpuInfo | null;
   grade: DeviceGrade;          // 'S' | 'A' | 'B' | 'C'
-  connection: ConnectionInfo;
   battery: BatteryInfo | null;
   memory: number;              // navigator.deviceMemory (GB)
 }
@@ -147,7 +146,6 @@ interface CapabilityReport {
   webgpu: boolean;
   gpu: GpuInfo | null;
   grade: DeviceGrade;
-  connection: ConnectionInfo;
   battery: BatteryInfo | null;
   memory: number;
 }
@@ -164,12 +162,6 @@ interface GpuInfo {
   vendor: string;
   name: string;
   vram: number;    // Estimated VRAM in MB
-}
-
-interface ConnectionInfo {
-  type: string;
-  downlink: number;
-  saveData: boolean;
 }
 
 interface BatteryInfo {

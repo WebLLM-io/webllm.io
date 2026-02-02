@@ -6,12 +6,6 @@ export interface GpuInfo {
   vram: number;
 }
 
-export interface ConnectionInfo {
-  type: string;
-  downlink: number;
-  saveData: boolean;
-}
-
 export interface BatteryInfo {
   level: number;
   charging: boolean;
@@ -20,7 +14,6 @@ export interface BatteryInfo {
 export interface DeviceStats {
   gpu: GpuInfo | null;
   grade: DeviceGrade;
-  connection: ConnectionInfo;
   battery: BatteryInfo | null;
   memory: number;
 }
@@ -29,7 +22,6 @@ export interface CapabilityReport {
   webgpu: boolean;
   gpu: GpuInfo | null;
   grade: DeviceGrade;
-  connection: ConnectionInfo;
   battery: BatteryInfo | null;
   memory: number;
 }

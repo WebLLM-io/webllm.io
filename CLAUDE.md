@@ -126,7 +126,7 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 
 #### Runtime Status Card
 
-The sidebar status card shows 9 fields:
+The sidebar status card shows 8 fields:
 
 | Field | Source |
 |---|---|
@@ -136,7 +136,6 @@ The sidebar status card shows 9 fields:
 | Model | `client.status().localModel` — resolved model ID |
 | Status | Internal pipeline state: Idle / Loading / Ready / Error |
 | Battery | `checkCapability().battery` — percentage and charging state |
-| Connection | `checkCapability().connection` — type and downlink speed |
 | Local Tokens | Cumulative token count from local backend (real usage or chars/4 estimate) |
 | Cloud Tokens | Cumulative token count from cloud backend (real usage or chars/4 estimate) |
 

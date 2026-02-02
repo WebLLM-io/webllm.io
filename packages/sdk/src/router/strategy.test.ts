@@ -29,7 +29,6 @@ function makeStats(overrides: Partial<DeviceStats> = {}): DeviceStats {
   return {
     gpu: { vendor: 'NVIDIA', name: 'RTX 4090', vram: 16384 },
     grade: 'S',
-    connection: { type: 'wifi', downlink: 10, saveData: false },
     battery: { level: 0.8, charging: true },
     memory: 16384,
     ...overrides,

@@ -100,7 +100,6 @@ class CustomCloudBackend implements InferenceBackend {
       deviceStats: {
         gpu: null,
         grade: 'C',
-        connection: { type: 'unknown', downlink: 0, saveData: false },
         battery: null,
         memory: 0,
       },
