@@ -29,6 +29,7 @@ pnpm + Turborepo monorepo with the following packages:
 - **Runtime status** — `client.status()` returns `ClientStatus` with `localModel`, `localReady`, `localEnabled`, `cloudEnabled`
 - **Route observability** — `onRoute` callback in `CreateClientOptions` fires on each route decision with `{ decision, reason }`
 - **Error observability** — `onError` callback in `CreateClientOptions` fires when local backend initialization fails
+- **Streaming usage** — Cloud streaming requests include `stream_options: { include_usage: true }` so the final chunk carries token usage; `ChatCompletionChunk.usage` is optional (populated by OpenAI-compatible APIs)
 
 ## SDK Module Layout
 
@@ -125,7 +126,7 @@ Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-
 
 #### Runtime Status Card
 
-The sidebar status card shows 7 fields:
+The sidebar status card shows 9 fields:
 
 | Field | Source |
 |---|---|
@@ -136,6 +137,8 @@ The sidebar status card shows 7 fields:
 | Status | Internal pipeline state: Idle / Loading / Ready / Error |
 | Battery | `checkCapability().battery` — percentage and charging state |
 | Connection | `checkCapability().connection` — type and downlink speed |
+| Local Tokens | Cumulative token count from local backend (real usage or chars/4 estimate) |
+| Cloud Tokens | Cumulative token count from cloud backend (real usage or chars/4 estimate) |
 
 #### Pipeline Progress (inline)
 

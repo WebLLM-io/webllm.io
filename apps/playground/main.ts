@@ -52,6 +52,8 @@ const localModelEl = document.getElementById('local-model')!;
 const pipelineStatusEl = document.getElementById('pipeline-status')!;
 const batteryInfoEl = document.getElementById('battery-info')!;
 const connectionInfoEl = document.getElementById('connection-info')!;
+const localTokensEl = document.getElementById('local-tokens')!;
+const cloudTokensEl = document.getElementById('cloud-tokens')!;
 
 const settingLocalModel = document.getElementById('setting-local-model') as HTMLInputElement;
 const settingLocalWorker = document.getElementById('setting-local-worker') as HTMLInputElement;
@@ -88,6 +90,8 @@ let abortController: AbortController | null = null;
 let lastRouteDecision: 'local' | 'cloud' | null = null;
 let pipelineStatus: PipelineStatus = 'idle';
 const chatHistory: Message[] = [];
+let localTokens = { prompt: 0, completion: 0 };
+let cloudTokens = { prompt: 0, completion: 0 };
 
 // --- Pipeline Status ---
 function setPipelineStatus(status: PipelineStatus) {
@@ -113,6 +117,15 @@ function updateStatusCard() {
   const s = client.status();
   localModelEl.textContent = s.localModel || '\u2014';
   localModelEl.title = s.localModel || '';
+}
+
+function updateTokenDisplay() {
+  const localTotal = localTokens.prompt + localTokens.completion;
+  const cloudTotal = cloudTokens.prompt + cloudTokens.completion;
+  localTokensEl.textContent = localTotal.toLocaleString();
+  localTokensEl.title = `Prompt: ${localTokens.prompt.toLocaleString()}, Completion: ${localTokens.completion.toLocaleString()}`;
+  cloudTokensEl.textContent = cloudTotal.toLocaleString();
+  cloudTokensEl.title = `Prompt: ${cloudTokens.prompt.toLocaleString()}, Completion: ${cloudTokens.completion.toLocaleString()}`;
 }
 
 // --- Pipeline Steps ---
@@ -537,8 +550,13 @@ async function handleSend(retryText?: string) {
   let fullContent = '';
   let modelName = '';
   let firstChunk = true;
+  let lastChunk: ChatCompletionChunk | null = null;
+  let inputText = '';
 
   try {
+    // Capture input text for fallback estimation
+    inputText = chatHistory.map(m => m.content).join(' ');
+
     const stream = client.chat.completions.create({
       messages: [...chatHistory],
       stream: true,
@@ -555,7 +573,20 @@ async function handleSend(retryText?: string) {
       fullContent += delta;
       contentDiv.textContent = fullContent;
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      lastChunk = chunk;
     }
+
+    // Accumulate token usage
+    const target = lastRouteDecision === 'cloud' ? cloudTokens : localTokens;
+    if (lastChunk?.usage) {
+      target.prompt += lastChunk.usage.prompt_tokens;
+      target.completion += lastChunk.usage.completion_tokens;
+    } else {
+      // Fallback: estimate tokens as chars / 4
+      target.prompt += Math.ceil(inputText.length / 4);
+      target.completion += Math.ceil(fullContent.length / 4);
+    }
+    updateTokenDisplay();
 
     // Model tag and route badge
     const metaContainer = document.createElement('div');
@@ -636,6 +667,9 @@ applySettingsBtn.addEventListener('click', () => {
 
 clearBtn.addEventListener('click', () => {
   chatHistory.length = 0;
+  localTokens = { prompt: 0, completion: 0 };
+  cloudTokens = { prompt: 0, completion: 0 };
+  updateTokenDisplay();
   messagesDiv.innerHTML = `
     <div class="empty-state">
       <div class="logo-large">
