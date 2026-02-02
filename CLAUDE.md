@@ -24,6 +24,7 @@ pnpm + Turborepo monorepo with the following packages:
 - **Zero-dep cloud** — SSE parsing is self-implemented (~30 lines), no openai SDK dependency
 - **Serial request queue** — MLCEngine is single-threaded; RequestQueue serializes local inference
 - **Device scoring** — S/A/B/C grades based on maxStorageBufferBindingSize (VRAM proxy); all grades support local inference (C uses Qwen2.5-1.5B-Instruct lightweight model)
+- **VRAM detection via adapter.limits** — Reads `adapter.limits.maxStorageBufferBindingSize` directly (not from a default device, which only returns spec defaults like 128 MB). When the adapter still reports ≤128 MB, a `navigator.deviceMemory`-based heuristic kicks in: Apple Silicon uses 50% of system RAM; other vendors use 25% as a conservative floor. `deviceMemory` is capped at 8 GB by browsers, which naturally prevents over-aggressive model selection.
 - **Explicit opt-in** — Both local and cloud default to disabled; users must explicitly configure at least one engine
 
 ## SDK Module Layout

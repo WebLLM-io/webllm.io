@@ -1,6 +1,6 @@
 import type { BatteryInfo, CapabilityReport, ConnectionInfo, DeviceStats } from './types.js';
 import { checkWebGPU } from './webgpu.js';
-import { detectGpu } from './vram.js';
+import { detectGpu, getDeviceMemory } from './vram.js';
 import { scoreDevice } from './scoring.js';
 
 async function getConnectionInfo(): Promise<ConnectionInfo> {
@@ -26,11 +26,6 @@ async function getBatteryInfo(): Promise<BatteryInfo | null> {
   } catch {
     return null;
   }
-}
-
-function getDeviceMemory(): number {
-  const nav = navigator as unknown as { deviceMemory?: number };
-  return nav.deviceMemory ?? 0;
 }
 
 export async function collectDeviceStats(): Promise<DeviceStats> {
