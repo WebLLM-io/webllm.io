@@ -1,5 +1,12 @@
 # @webllm-io/playground
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [b323592]
+  - @webllm-io/sdk@1.1.0
+
 ## 0.0.1
 
 ### Patch Changes
