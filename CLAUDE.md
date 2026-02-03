@@ -195,6 +195,7 @@ Chat errors render as inline error cards with a "Retry" button that re-sends the
 
 - **`.github/workflows/deploy.yml`** — Deploys `dist/site/` to Cloudflare Pages on push to main
 - **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main (uses npm Trusted Publishing via OIDC, no token needed). Requires Node 24+ (npm >= 11.5.1 for OIDC support). `changesets/action` only creates version PRs; publishing is a separate step to avoid `.npmrc` conflicts with OIDC auth. After publishing, `pnpm changeset tag` creates git tags (e.g., `@webllm-io/sdk@1.0.0`) and pushes them to origin.
+- **Changesets ignore list** — Only `@webllm-io/sdk` is published; private app packages (`web`, `docs`, `playground`) are listed in `.changeset/config.json` `ignore` to skip version management. Note: `tsconfig` cannot be ignored because `sdk` depends on it.
 
 ### Required GitHub Secrets
 
