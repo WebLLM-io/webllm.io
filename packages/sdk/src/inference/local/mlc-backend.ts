@@ -91,8 +91,15 @@ export class MLCBackend implements InferenceBackend {
         );
         this.engine = (await CreateWebWorkerMLCEngine(worker, modelId, {
           initProgressCallback: (progress) => {
+            const text: string = (progress as any).text || '';
+            let stage: 'download' | 'compile' | 'warmup' = 'download';
+            if (progress.progress >= 1) {
+              stage = 'warmup';
+            } else if (/shader|compile/i.test(text)) {
+              stage = 'compile';
+            }
             this.onProgress?.({
-              stage: progress.progress < 1 ? 'download' : 'warmup',
+              stage,
               progress: progress.progress,
               model: modelId,
             });
@@ -102,8 +109,15 @@ export class MLCBackend implements InferenceBackend {
         const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
         this.engine = (await CreateMLCEngine(modelId, {
           initProgressCallback: (progress) => {
+            const text: string = (progress as any).text || '';
+            let stage: 'download' | 'compile' | 'warmup' = 'download';
+            if (progress.progress >= 1) {
+              stage = 'warmup';
+            } else if (/shader|compile/i.test(text)) {
+              stage = 'compile';
+            }
             this.onProgress?.({
-              stage: progress.progress < 1 ? 'download' : 'warmup',
+              stage,
               progress: progress.progress,
               model: modelId,
             });
