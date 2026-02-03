@@ -352,36 +352,31 @@ function initClient() {
   lastRouteDecision = null;
 
   try {
-    if (config.mode === 'local') {
-      client = createClient({
-        local,
-        onProgress: handleProgress,
-        onRoute: handleRoute,
-        onError: handleInitError,
-      });
-    } else if (config.mode === 'cloud') {
-      if (!cloud) {
-        addSystemMessage('Please provide a Cloud Base URL.');
-        return;
-      }
-      client = createClient({
-        local: false,
-        cloud,
-        onRoute: handleRoute,
-      });
-    } else {
-      client = createClient({
-        local,
-        cloud,
-        onProgress: handleProgress,
-        onRoute: handleRoute,
-        onError: handleInitError,
-      });
+    // Always create client with all available backends.
+    // Mode switching is handled per-request via the `provider` field,
+    // so we don't need to rebuild the client when switching tabs.
+    const opts: Parameters<typeof createClient>[0] = {
+      onRoute: handleRoute,
+    };
+
+    if (local) {
+      opts.local = local;
+      opts.onProgress = handleProgress;
+      opts.onError = handleInitError;
     }
+    if (cloud) {
+      opts.cloud = cloud;
+    }
+
+    if (!opts.local && !opts.cloud) {
+      addSystemMessage('Please configure at least one backend.');
+      return;
+    }
+
+    client = createClient(opts);
     addSystemMessage(`Client initialized: ${config.mode.toUpperCase()} mode`);
     sendBtn.disabled = false;
-    const hasLocal = config.mode === 'local' || config.mode === 'auto';
-    setPipelineStatus(hasLocal ? 'initializing' : 'idle');
+    setPipelineStatus(opts.local ? 'initializing' : 'idle');
     updateStatusCard();
   } catch (err) {
     addSystemMessage(`Init Error: ${(err as Error).message}`);
@@ -546,10 +541,16 @@ async function handleSend(retryText?: string) {
     // Capture input text for fallback estimation
     inputText = chatHistory.map(m => m.content).join(' ');
 
+    // Route based on active mode tab: auto lets the router decide,
+    // local/cloud forces the corresponding backend via `provider`.
+    const activeTab = document.querySelector('.mode-tab.active');
+    const currentMode = activeTab?.getAttribute('data-mode') || 'auto';
+
     const stream = client.chat.completions.create({
       messages: [...chatHistory],
       stream: true,
       signal: abortController.signal,
+      ...(currentMode !== 'auto' && { provider: currentMode as 'local' | 'cloud' }),
     });
 
     for await (const chunk of stream as AsyncIterable<ChatCompletionChunk>) {
@@ -630,7 +631,6 @@ modeTabs.forEach(tab => {
     const mode = tab.getAttribute('data-mode')!;
     updateSettingsVisibility(mode);
     generateCodeSnippet();
-    initClient();
   });
 });
 
