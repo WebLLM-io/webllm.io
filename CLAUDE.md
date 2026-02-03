@@ -30,6 +30,8 @@ pnpm + Turborepo monorepo with the following packages:
 - **Route observability** — `onRoute` callback in `CreateClientOptions` fires on each route decision with `{ decision, reason }`
 - **Error observability** — `onError` callback in `CreateClientOptions` fires when local backend initialization fails
 - **Streaming usage** — Cloud streaming requests include `stream_options: { include_usage: true }` so the final chunk carries token usage; `ChatCompletionChunk.usage` is optional (populated by OpenAI-compatible APIs)
+- **Playground mode switching** — Mode tab switches only change UI state and per-request `provider` field; client is NOT rebuilt on tab switch. Only "Apply & Reinitialize" triggers `initClient()`. The client is always created with all available backends (local + cloud).
+- **Progress stage parsing** — `initProgressCallback` parses `progress.text` from web-llm: `/shader|compile/i` → `'compile'` stage, `progress >= 1` → `'warmup'`, otherwise → `'download'`
 
 ## SDK Module Layout
 
