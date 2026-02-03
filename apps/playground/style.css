@@ -227,7 +227,12 @@ body {
   transition: background 0.2s;
 }
 
-.primary-btn:hover { background: var(--accent-hover); }
+.primary-btn:hover:not(:disabled) { background: var(--accent-hover); }
+
+.primary-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .secondary-btn {
   background: transparent;
