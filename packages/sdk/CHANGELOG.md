@@ -1,5 +1,11 @@
 # @webllm-io/sdk
 
+## 1.1.1
+
+### Patch Changes
+
+- Fix progress stage mapping in MLC backend to distinguish download vs compile stages based on web-llm progress text
+
 ## 1.1.0
 
 ### Minor Changes
