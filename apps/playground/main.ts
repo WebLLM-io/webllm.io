@@ -91,6 +91,7 @@ let pipelineStatus: PipelineStatus = 'idle';
 const chatHistory: Message[] = [];
 let localTokens = { prompt: 0, completion: 0 };
 let cloudTokens = { prompt: 0, completion: 0 };
+let appliedConfig: PlaygroundConfig | null = null;
 
 // --- Pipeline Status ---
 function setPipelineStatus(status: PipelineStatus) {
@@ -213,6 +214,27 @@ function updateSettingsVisibility(mode: string) {
       isCloud ? group.classList.add('active') : group.classList.remove('active');
     }
   });
+}
+
+// --- Apply Button State ---
+function configNeedsReinit(): boolean {
+  if (!appliedConfig) return true;
+  const current = collectConfig();
+  // Compare only backend-relevant fields; mode is handled per-request
+  return (
+    current.localModel !== appliedConfig.localModel ||
+    current.localWebWorker !== appliedConfig.localWebWorker ||
+    current.localCache !== appliedConfig.localCache ||
+    current.cloudBaseURL !== appliedConfig.cloudBaseURL ||
+    current.cloudApiKey !== appliedConfig.cloudApiKey ||
+    current.cloudModel !== appliedConfig.cloudModel ||
+    current.cloudTimeout !== appliedConfig.cloudTimeout ||
+    current.cloudRetries !== appliedConfig.cloudRetries
+  );
+}
+
+function updateApplyButton() {
+  applySettingsBtn.disabled = !configNeedsReinit();
 }
 
 // --- Code Snippet ---
@@ -374,10 +396,12 @@ function initClient() {
     }
 
     client = createClient(opts);
+    appliedConfig = { ...config };
     addSystemMessage(`Client initialized: ${config.mode.toUpperCase()} mode`);
     sendBtn.disabled = false;
     setPipelineStatus(opts.local ? 'initializing' : 'idle');
     updateStatusCard();
+    updateApplyButton();
   } catch (err) {
     addSystemMessage(`Init Error: ${(err as Error).message}`);
     setPipelineStatus('error');
@@ -680,8 +704,8 @@ const settingInputs = [
   settingBaseURL, settingApiKey, settingModel, settingTimeout, settingRetries,
 ];
 settingInputs.forEach(el => {
-  el.addEventListener('input', generateCodeSnippet);
-  el.addEventListener('change', generateCodeSnippet);
+  el.addEventListener('input', () => { generateCodeSnippet(); updateApplyButton(); });
+  el.addEventListener('change', () => { generateCodeSnippet(); updateApplyButton(); });
 });
 
 copyCodeBtn.addEventListener('click', () => {
