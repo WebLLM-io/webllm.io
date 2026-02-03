@@ -41,3 +41,9 @@ jobs:
         env:
           NPM_CONFIG_PROVENANCE: true
           NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+
+      - name: Create and push git tags
+        if: steps.changesets.outputs.hasChangesets == 'false'
+        run: |
+          pnpm changeset tag
+          git push origin --tags
