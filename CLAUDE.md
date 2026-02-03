@@ -134,7 +134,7 @@ The sidebar status card shows 8 fields:
 | VRAM | `checkCapability().gpu.vram` |
 | Grade | `checkCapability().grade` with threshold hint (e.g., "A (>= 4096 MB)") |
 | Model | `client.status().localModel` — resolved model ID |
-| Status | Internal pipeline state: Idle / Loading / Ready / Error |
+| Status | Internal pipeline state: Idle / Initializing / Loading / Ready / Error |
 | Battery | `checkCapability().battery` — percentage and charging state |
 | Local Tokens | Cumulative token count from local backend (real usage or chars/4 estimate) |
 | Cloud Tokens | Cumulative token count from cloud backend (real usage or chars/4 estimate) |

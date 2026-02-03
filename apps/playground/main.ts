@@ -14,7 +14,7 @@ interface PlaygroundConfig {
   cloudRetries: string;
 }
 
-type PipelineStatus = 'idle' | 'loading' | 'ready' | 'error';
+type PipelineStatus = 'idle' | 'initializing' | 'loading' | 'ready' | 'error';
 
 const CONFIG_KEY = 'webllm-playground-config-v2';
 
@@ -97,12 +97,14 @@ function setPipelineStatus(status: PipelineStatus) {
   pipelineStatus = status;
   const labels: Record<PipelineStatus, string> = {
     idle: 'Idle',
+    initializing: 'Initializing',
     loading: 'Loading',
     ready: 'Ready',
     error: 'Error',
   };
   const classes: Record<PipelineStatus, string> = {
     idle: 'status-value pending',
+    initializing: 'status-value pending',
     loading: 'status-value pending',
     ready: 'status-value success',
     error: 'status-value error',
@@ -378,7 +380,8 @@ function initClient() {
     }
     addSystemMessage(`Client initialized: ${config.mode.toUpperCase()} mode`);
     sendBtn.disabled = false;
-    setPipelineStatus('idle');
+    const hasLocal = config.mode === 'local' || config.mode === 'auto';
+    setPipelineStatus(hasLocal ? 'initializing' : 'idle');
     updateStatusCard();
   } catch (err) {
     addSystemMessage(`Init Error: ${(err as Error).message}`);
