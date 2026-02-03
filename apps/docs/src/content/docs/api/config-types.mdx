@@ -12,6 +12,8 @@ interface CreateClientOptions {
   local?: LocalConfig;
   cloud?: CloudConfig;
   onProgress?: ProgressCallback;
+  onRoute?: RouteCallback;
+  onError?: (error: Error) => void;
 }
 ```
 
@@ -195,3 +197,36 @@ interface CacheInfo {
   cached: boolean;
 }
 ```
+
+---
+
+## ClientStatus
+
+Runtime status returned by `client.status()`.
+
+```ts
+interface ClientStatus {
+  localModel: string | null;
+  localReady: boolean;
+  localEnabled: boolean;
+  cloudEnabled: boolean;
+}
+```
+
+- `localModel` — Resolved local model ID, or `null` if no model is selected
+- `localReady` — `true` if the local model is loaded and ready for inference
+- `localEnabled` — `true` if local inference is configured
+- `cloudEnabled` — `true` if cloud inference is configured
+
+---
+
+## RouteCallback
+
+Callback type for observing routing decisions.
+
+```ts
+type RouteCallback = (info: { decision: 'local' | 'cloud'; reason: string }) => void;
+```
+
+- `decision` — Which backend was selected
+- `reason` — Human-readable explanation for the routing decision

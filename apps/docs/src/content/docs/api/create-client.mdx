@@ -22,6 +22,8 @@ interface CreateClientOptions {
   local?: LocalConfig;
   cloud?: CloudConfig;
   onProgress?: ProgressCallback;
+  onRoute?: RouteCallback;
+  onError?: (error: Error) => void;
 }
 ```
 
@@ -58,6 +60,49 @@ interface LoadProgress {
   bytesLoaded?: number;
   bytesTotal?: number;
 }
+```
+
+#### `onRoute`
+
+Callback invoked on each routing decision, reporting whether a request was routed to local or cloud and why.
+
+- Type: `RouteCallback`
+- Default: `undefined`
+
+```ts
+type RouteCallback = (info: { decision: 'local' | 'cloud'; reason: string }) => void;
+```
+
+**Example:**
+
+```ts
+const client = createClient({
+  local: 'auto',
+  cloud: process.env.OPENAI_API_KEY,
+  onRoute: ({ decision, reason }) => {
+    console.log(`Routed to ${decision}: ${reason}`);
+  }
+});
+```
+
+#### `onError`
+
+Callback invoked when the local backend fails to initialize (e.g., WebGPU not available, model load failure). Useful for logging or fallback UI.
+
+- Type: `(error: Error) => void`
+- Default: `undefined`
+
+**Example:**
+
+```ts
+const client = createClient({
+  local: 'auto',
+  cloud: process.env.OPENAI_API_KEY,
+  onError: (error) => {
+    console.error('Local backend failed:', error.message);
+    // Show fallback UI or switch to cloud-only mode
+  }
+});
 ```
 
 ## Return Value

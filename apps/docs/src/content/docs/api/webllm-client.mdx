@@ -16,6 +16,7 @@ interface WebLLMClient {
     isLoaded(): boolean;
   };
   capability(): Promise<CapabilityReport>;
+  status(): ClientStatus;
   dispose(): Promise<void>;
 }
 ```
@@ -96,6 +97,36 @@ const report = await client.capability();
 console.log(`Device grade: ${report.grade}`);
 console.log(`VRAM: ${report.gpu?.vram}MB`);
 console.log(`WebGPU: ${report.webgpu ? 'Available' : 'Not available'}`);
+```
+
+### `status()`
+
+Returns the current runtime status of the client, including which model is resolved, whether local inference is ready, and which engines are enabled.
+
+**Returns:** `ClientStatus`
+
+```ts
+interface ClientStatus {
+  localModel: string | null;
+  localReady: boolean;
+  localEnabled: boolean;
+  cloudEnabled: boolean;
+}
+```
+
+- `localModel` — Resolved local model ID, or `null` if no model is selected
+- `localReady` — `true` if the local model is loaded and ready for inference
+- `localEnabled` — `true` if local inference is configured
+- `cloudEnabled` — `true` if cloud inference is configured
+
+**Example:**
+
+```ts
+const status = client.status();
+console.log(`Local model: ${status.localModel}`);
+console.log(`Local ready: ${status.localReady}`);
+console.log(`Local enabled: ${status.localEnabled}`);
+console.log(`Cloud enabled: ${status.cloudEnabled}`);
 ```
 
 ### `dispose()`
