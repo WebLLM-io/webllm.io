@@ -1,5 +1,6 @@
 import { createClient, checkCapability } from '@webllm-io/sdk';
 import type { WebLLMClient, ChatCompletionChunk, Message } from '@webllm-io/sdk';
+import { prebuiltAppConfig } from '@mlc-ai/web-llm';
 
 // --- Types ---
 interface PlaygroundConfig {
@@ -55,6 +56,10 @@ const localTokensEl = document.getElementById('local-tokens')!;
 const cloudTokensEl = document.getElementById('cloud-tokens')!;
 
 const settingLocalModel = document.getElementById('setting-local-model') as HTMLInputElement;
+const localModelCombobox = document.getElementById('local-model-combobox')!;
+const localModelListbox = document.getElementById('local-model-listbox')!;
+const comboboxToggle = localModelCombobox.querySelector('.combobox-toggle') as HTMLButtonElement;
+const modelCountEl = document.getElementById('model-count')!;
 const settingLocalWorker = document.getElementById('setting-local-worker') as HTMLInputElement;
 const settingLocalCache = document.getElementById('setting-local-cache') as HTMLInputElement;
 const settingBaseURL = document.getElementById('setting-base-url') as HTMLInputElement;
@@ -92,6 +97,12 @@ const chatHistory: Message[] = [];
 let localTokens = { prompt: 0, completion: 0 };
 let cloudTokens = { prompt: 0, completion: 0 };
 let appliedConfig: PlaygroundConfig | null = null;
+
+// --- Combobox State ---
+let modelOptions: string[] = [];
+let filteredOptions: string[] = [];
+let highlightedIndex = -1;
+let isComboboxOpen = false;
 
 // --- Pipeline Status ---
 function setPipelineStatus(status: PipelineStatus) {
@@ -235,6 +246,109 @@ function configNeedsReinit(): boolean {
 
 function updateApplyButton() {
   applySettingsBtn.disabled = !configNeedsReinit();
+}
+
+// --- Combobox Logic ---
+function initModelOptions() {
+  modelOptions = prebuiltAppConfig.model_list.map((m) => m.model_id);
+  filteredOptions = [...modelOptions];
+  modelCountEl.textContent = `${modelOptions.length} models available`;
+  renderComboboxOptions();
+}
+
+function filterComboboxOptions(query: string) {
+  const q = query.toLowerCase().trim();
+  if (!q) {
+    filteredOptions = [...modelOptions];
+  } else {
+    filteredOptions = modelOptions.filter((id) => id.toLowerCase().includes(q));
+  }
+  highlightedIndex = filteredOptions.length > 0 ? 0 : -1;
+  renderComboboxOptions();
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightMatch(text: string, query: string): string {
+  if (!query.trim()) return escapeHtml(text);
+  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+  return escapeHtml(text).replace(regex, '<mark>$1</mark>');
+}
+
+function renderComboboxOptions() {
+  const query = settingLocalModel.value;
+  const currentValue = settingLocalModel.value.trim();
+
+  if (filteredOptions.length === 0) {
+    localModelListbox.innerHTML = '<li class="combobox-empty">No matching models</li>';
+    return;
+  }
+
+  localModelListbox.innerHTML = filteredOptions
+    .map((id, idx) => {
+      const isHighlighted = idx === highlightedIndex;
+      const isSelected = id === currentValue;
+      const classes = [
+        'combobox-option',
+        isHighlighted ? 'highlighted' : '',
+        isSelected ? 'selected' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      return `<li class="${classes}" role="option" data-value="${escapeHtml(id)}" data-index="${idx}">${highlightMatch(id, query)}</li>`;
+    })
+    .join('');
+}
+
+function openCombobox() {
+  if (isComboboxOpen) return;
+  isComboboxOpen = true;
+  localModelCombobox.classList.add('open');
+  localModelListbox.classList.remove('hidden');
+  settingLocalModel.setAttribute('aria-expanded', 'true');
+  filterComboboxOptions(settingLocalModel.value);
+  scrollHighlightedIntoView();
+}
+
+function closeCombobox() {
+  if (!isComboboxOpen) return;
+  isComboboxOpen = false;
+  localModelCombobox.classList.remove('open');
+  localModelListbox.classList.add('hidden');
+  settingLocalModel.setAttribute('aria-expanded', 'false');
+  highlightedIndex = -1;
+}
+
+function toggleCombobox() {
+  if (isComboboxOpen) {
+    closeCombobox();
+  } else {
+    openCombobox();
+    settingLocalModel.focus();
+  }
+}
+
+function selectOption(value: string) {
+  settingLocalModel.value = value;
+  closeCombobox();
+  generateCodeSnippet();
+  updateApplyButton();
+}
+
+function updateHighlight(newIndex: number) {
+  if (filteredOptions.length === 0) return;
+  highlightedIndex = Math.max(0, Math.min(newIndex, filteredOptions.length - 1));
+  renderComboboxOptions();
+  scrollHighlightedIntoView();
+}
+
+function scrollHighlightedIntoView() {
+  const highlighted = localModelListbox.querySelector('.highlighted') as HTMLElement;
+  if (highlighted) {
+    highlighted.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 // --- Code Snippet ---
@@ -726,9 +840,89 @@ errorDismissBtn.addEventListener('click', () => {
   hideProgress();
 });
 
+// --- Combobox Event Listeners ---
+settingLocalModel.addEventListener('focus', () => {
+  openCombobox();
+});
+
+settingLocalModel.addEventListener('input', () => {
+  filterComboboxOptions(settingLocalModel.value);
+  if (!isComboboxOpen) openCombobox();
+});
+
+settingLocalModel.addEventListener('keydown', (e) => {
+  if (!isComboboxOpen) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      openCombobox();
+    }
+    return;
+  }
+
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      updateHighlight(highlightedIndex + 1);
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      updateHighlight(highlightedIndex - 1);
+      break;
+    case 'Enter':
+      e.preventDefault();
+      if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
+        selectOption(filteredOptions[highlightedIndex]);
+      } else {
+        closeCombobox();
+      }
+      break;
+    case 'Escape':
+      e.preventDefault();
+      closeCombobox();
+      break;
+    case 'Tab':
+      closeCombobox();
+      break;
+  }
+});
+
+comboboxToggle.addEventListener('click', (e) => {
+  e.preventDefault();
+  toggleCombobox();
+});
+
+localModelListbox.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  const option = target.closest('.combobox-option') as HTMLElement;
+  if (option) {
+    const value = option.dataset.value || '';
+    selectOption(value);
+  }
+});
+
+localModelListbox.addEventListener('mousemove', (e) => {
+  const target = e.target as HTMLElement;
+  const option = target.closest('.combobox-option') as HTMLElement;
+  if (option && option.dataset.index !== undefined) {
+    const idx = parseInt(option.dataset.index, 10);
+    if (idx !== highlightedIndex) {
+      highlightedIndex = idx;
+      renderComboboxOptions();
+    }
+  }
+});
+
+// Close combobox when clicking outside
+document.addEventListener('click', (e) => {
+  if (!localModelCombobox.contains(e.target as Node)) {
+    closeCombobox();
+  }
+});
+
 // --- Boot ---
 const initialConfig = loadConfig();
 syncUIWithConfig(initialConfig);
+initModelOptions();
 generateCodeSnippet();
 detectCapability();
 initClient();

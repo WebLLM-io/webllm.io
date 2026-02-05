@@ -187,12 +187,131 @@ body {
 
 .input-field input:focus { border-color: var(--accent); }
 
+/* Combobox */
+.combobox {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.combobox input {
+  width: 100%;
+  padding-right: 32px;
+}
+
+.combobox-toggle {
+  position: absolute;
+  right: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.combobox-toggle:hover {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.combobox.open .combobox-toggle svg {
+  transform: rotate(180deg);
+}
+
+.combobox-listbox {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  z-index: 200;
+  box-shadow: var(--shadow-md);
+}
+
+.combobox-listbox::-webkit-scrollbar {
+  width: 6px;
+}
+
+.combobox-listbox::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.combobox-listbox::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.combobox-listbox::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.combobox-option {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combobox-option:hover {
+  background: var(--bg-tertiary);
+}
+
+.combobox-option.highlighted {
+  background: var(--accent-muted);
+  color: var(--text-primary);
+}
+
+.combobox-option.selected {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.combobox-option mark {
+  background: var(--accent-muted);
+  color: var(--accent);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.combobox-empty {
+  padding: 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+.combobox-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.model-count {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
 .model-list-link {
-  display: inline-block;
   font-size: 0.7rem;
   color: var(--text-muted);
   text-decoration: none;
-  margin-top: 4px;
   transition: color 0.2s;
 }
 

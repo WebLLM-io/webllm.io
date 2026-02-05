@@ -102,7 +102,7 @@ Astro Starlight site. Content in `src/content/docs/` as MDX files. Sidebar struc
 The playground includes a collapsible Settings panel with **Local** and **Cloud** sections:
 
 **Local settings:**
-- **Model** — Fixed model name (empty = auto device-based selection)
+- **Model** — Combobox for selecting model (empty = auto device-based selection). Supports dropdown selection from 153+ prebuilt models, free-text input for custom models, real-time search/filter, and keyboard navigation (Arrow Up/Down, Enter, Escape).
 - **WebWorker** — Run inference in WebWorker (default: Enabled)
 - **Cache (OPFS)** — Enable OPFS model caching (default: Enabled)
 
@@ -114,9 +114,15 @@ The playground includes a collapsible Settings panel with **Local** and **Cloud*
 
 Settings are persisted in localStorage under the key `webllm-playground-config` and restored on page load. Click "Apply & Reinitialize" to apply changes.
 
-#### Model List Link
+#### Local Model Combobox
 
-Below the Local Model ID input, a "Browse available models →" link points to the MLC web-llm model config on GitHub (`https://github.com/mlc-ai/web-llm/blob/main/src/config.ts`). Opens in a new tab.
+The Local Model ID field is a combobox component with the following features:
+- **Dropdown selection** — Click input or toggle button to show model list from `@mlc-ai/web-llm` `prebuiltAppConfig`
+- **Free-text input** — Type any custom model name directly
+- **Real-time filtering** — Input filters the model list with highlighted matches
+- **Keyboard navigation** — Arrow Up/Down to navigate, Enter to select, Escape to close, Tab to close and move focus
+- **Model count** — Shows total available models (e.g., "153 models available")
+- **GitHub link** — "Browse on GitHub →" link to view full model config source
 
 #### Integration Code Snippet
 

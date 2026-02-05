@@ -120,10 +120,21 @@
             <div class="group-header">Local Config</div>
             <div class="input-field">
               <label for="setting-local-model">Model ID</label>
-              <input type="text" id="setting-local-model" placeholder="Leave empty for auto" />
-              <a href="https://github.com/mlc-ai/web-llm/blob/main/src/config.ts" target="_blank" rel="noopener" class="model-list-link">
-                Browse available models →
-              </a>
+              <div class="combobox" id="local-model-combobox">
+                <input type="text" id="setting-local-model" placeholder="Leave empty for auto" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="local-model-listbox" />
+                <button type="button" class="combobox-toggle" aria-label="Toggle model list" tabindex="-1">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9l6 6 6-6"></path>
+                  </svg>
+                </button>
+                <ul id="local-model-listbox" class="combobox-listbox hidden" role="listbox"></ul>
+              </div>
+              <div class="combobox-meta">
+                <span id="model-count" class="model-count"></span>
+                <a href="https://github.com/mlc-ai/web-llm/blob/main/src/config.ts" target="_blank" rel="noopener" class="model-list-link">
+                  Browse on GitHub →
+                </a>
+              </div>
             </div>
             <div class="toggle-field">
               <label for="setting-local-worker">WebWorker</label>
