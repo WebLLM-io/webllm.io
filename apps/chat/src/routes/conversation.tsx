@@ -27,5 +27,5 @@ export function ConversationPage() {
     );
   }
 
-  return <ChatPanel conversationId={id} />;
+  return <ChatPanel key={id} conversationId={id} />;
 }

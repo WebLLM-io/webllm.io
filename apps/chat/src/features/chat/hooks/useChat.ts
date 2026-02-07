@@ -41,8 +41,9 @@ export function useChat() {
     const abortController = new AbortController();
     store.setAbortController(abortController);
 
-    // Build messages array from conversation
-    const conversation = store.conversations.find((c) => c.id === conversationId);
+    // Build messages array from conversation (re-read fresh state after addMessage)
+    const freshState = useStore.getState();
+    const conversation = freshState.conversations.find((c) => c.id === conversationId);
     const messages: Message[] = conversation
       ? conversation.messages.map((m) => ({ role: m.role, content: m.content }))
       : [{ role: 'user' as const, content: text }];
