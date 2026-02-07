@@ -16,9 +16,12 @@ interface Props {
 export function ChatPanel({ conversationId }: Props) {
   const conversations = useStore((s) => s.conversations);
   const pipelineStatus = useStore((s) => s.pipelineStatus);
+  const mode = useStore((s) => s.mode);
+  const cloudBaseURL = useStore((s) => s.cloudBaseURL);
   const conversation = conversations.find((c) => c.id === conversationId);
   const messages = conversation?.messages ?? [];
-  const isModelLoading = pipelineStatus === 'initializing' || pipelineStatus === 'loading';
+  const pipelineLoading = pipelineStatus === 'initializing' || pipelineStatus === 'loading';
+  const isModelLoading = pipelineLoading && (mode === 'local' || (mode === 'auto' && !cloudBaseURL));
 
   const { sendMessage } = useChat();
   const renderer = useStreamRenderer();
