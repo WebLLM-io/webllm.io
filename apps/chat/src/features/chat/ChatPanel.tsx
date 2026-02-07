@@ -44,7 +44,7 @@ export function ChatPanel({ conversationId }: Props) {
     abortRef.current?.abort();
   }, []);
 
-  const handleSend = useCallback((text: string) => {
+  const handleSend = useCallback((text: string, options?: { skipUserMessage?: boolean }) => {
     // Abort any existing request
     abortRef.current?.abort();
 
@@ -120,7 +120,7 @@ export function ChatPanel({ conversationId }: Props) {
         if (!thinkingRef.current.startTime) return null;
         return Date.now() - thinkingRef.current.startTime;
       },
-    });
+    }, options);
   }, [conversationId, sendMessage, renderer]);
 
   const handleRetry = useCallback(() => {
@@ -129,9 +129,46 @@ export function ChatPanel({ conversationId }: Props) {
     }
   }, [error, handleSend]);
 
+  const handleRegenerate = useCallback(() => {
+    const store = useStore.getState();
+    const conv = store.conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+
+    // Find last assistant message index
+    let lastAssistantIdx = -1;
+    for (let i = conv.messages.length - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'assistant') {
+        lastAssistantIdx = i;
+        break;
+      }
+    }
+    if (lastAssistantIdx === -1) return;
+
+    // Find the user message that preceded it
+    let userText = '';
+    for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+      if (conv.messages[i].role === 'user') {
+        userText = conv.messages[i].content;
+        break;
+      }
+    }
+    if (!userText) return;
+
+    // Delete from the assistant message onward, then re-send (skip adding user message)
+    store.deleteMessagesFrom(conversationId, lastAssistantIdx);
+    handleSend(userText, { skipUserMessage: true });
+  }, [conversationId, handleSend]);
+
+  const handleEditSubmit = useCallback((messageIndex: number, newContent: string) => {
+    const store = useStore.getState();
+    // Delete from the edited message onward, then send the new content
+    store.deleteMessagesFrom(conversationId, messageIndex);
+    handleSend(newContent);
+  }, [conversationId, handleSend]);
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <MessageList messages={messages}>
+      <MessageList messages={messages} isStreaming={isStreaming} onRegenerate={handleRegenerate} onEditSubmit={handleEditSubmit}>
         {isWaiting && (
           <div className="flex justify-start">
             <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface">

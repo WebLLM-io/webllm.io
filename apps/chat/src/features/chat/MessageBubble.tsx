@@ -1,17 +1,38 @@
 import { MarkdownContent } from './MarkdownContent';
 import { ThinkingSection } from './ThinkingSection';
+import { MessageActions } from './MessageActions';
+import { EditMessageForm } from './EditMessageForm';
 import type { ChatMessage } from '../conversations/types';
 import { cn } from '../../shared/cn';
 
 interface Props {
   message: ChatMessage;
+  isLastAssistant: boolean;
+  isStreaming: boolean;
+  isEditing: boolean;
+  onEdit: () => void;
+  onEditSubmit: (content: string) => void;
+  onEditCancel: () => void;
+  onRegenerate: () => void;
 }
 
-export function MessageBubble({ message }: Props) {
+export function MessageBubble({ message, isLastAssistant, isStreaming, isEditing, onEdit, onEditSubmit, onEditCancel, onRegenerate }: Props) {
   const isUser = message.role === 'user';
 
+  if (isEditing) {
+    return (
+      <div className="flex justify-end">
+        <EditMessageForm
+          initialContent={message.content}
+          onSubmit={onEditSubmit}
+          onCancel={onEditCancel}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
+    <div className={cn('group/message flex flex-col', isUser ? 'items-end' : 'items-start')}>
       <div
         className={cn(
           'max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3',
@@ -57,6 +78,15 @@ export function MessageBubble({ message }: Props) {
           </div>
         )}
       </div>
+
+      <MessageActions
+        isUser={isUser}
+        isLastAssistant={isLastAssistant}
+        isStreaming={isStreaming}
+        content={message.content}
+        onEdit={onEdit}
+        onRegenerate={onRegenerate}
+      />
     </div>
   );
 }
