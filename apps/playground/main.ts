@@ -815,6 +815,11 @@ async function handleSend(retryText?: string) {
 
   function ensureThinkingDOM() {
     if (thinkingDetails) return;
+    // Cancel any renderer that was targeting contentDiv before we rebuild the DOM
+    if (answerRenderer) {
+      answerRenderer.cancel();
+      answerRenderer = null;
+    }
     contentDiv.innerHTML = '';
     thinkingStartTime = Date.now();
 
