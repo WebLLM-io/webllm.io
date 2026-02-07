@@ -59,6 +59,7 @@ export class MLCBackend implements InferenceBackend {
   private queue = new RequestQueue();
   private loadAbortController: AbortController | null = null;
   private worker: Worker | null = null;
+  private initPromise: Promise<void> | null = null;
 
   constructor(config: MLCBackendConfig, onProgress?: ProgressCallback) {
     this.config = config;
@@ -81,6 +82,27 @@ export class MLCBackend implements InferenceBackend {
     await this.load(modelId);
   }
 
+  private async waitForInit(signal?: AbortSignal): Promise<void> {
+    if (!this.initPromise) return;
+
+    if (signal) {
+      await Promise.race([
+        this.initPromise,
+        new Promise<never>((_, reject) => {
+          if (signal.aborted) {
+            reject(new WebLLMError('ABORTED', 'Request aborted while waiting for init'));
+            return;
+          }
+          signal.addEventListener('abort', () => {
+            reject(new WebLLMError('ABORTED', 'Request aborted while waiting for init'));
+          }, { once: true });
+        }),
+      ]);
+    } else {
+      await this.initPromise;
+    }
+  }
+
   async load(modelId: string): Promise<void> {
     // Abort any previous loading operation
     if (this.loadAbortController) {
@@ -94,6 +116,13 @@ export class MLCBackend implements InferenceBackend {
     this.loadAbortController = new AbortController();
     const signal = this.loadAbortController.signal;
     const useWorker = this.config.useWebWorker !== false;
+
+    let resolveInit: () => void;
+    let rejectInit: (err: unknown) => void;
+    this.initPromise = new Promise<void>((resolve, reject) => {
+      resolveInit = resolve;
+      rejectInit = reject;
+    });
 
     try {
       if (useWorker) {
@@ -159,11 +188,15 @@ export class MLCBackend implements InferenceBackend {
       this.currentModel = modelId;
       this.ready = true;
       this.loadAbortController = null;
+      resolveInit!();
     } catch (err) {
-      if ((err as Error).message?.includes('aborted') || signal.aborted) {
-        throw new WebLLMError('ABORTED', 'Model load aborted');
-      }
-      throw new WebLLMError('MODEL_LOAD_FAILED', `Failed to load model: ${modelId}`, err);
+      const error = (err as Error).message?.includes('aborted') || signal.aborted
+        ? new WebLLMError('ABORTED', 'Model load aborted')
+        : new WebLLMError('MODEL_LOAD_FAILED', `Failed to load model: ${modelId}`, err);
+      rejectInit!(error);
+      throw error;
+    } finally {
+      this.initPromise = null;
     }
   }
 
@@ -180,6 +213,10 @@ export class MLCBackend implements InferenceBackend {
     req: ChatCompletionRequest,
     signal?: AbortSignal,
   ): Promise<ChatCompletion> {
+    if (!this.engine && this.initPromise) {
+      await this.waitForInit(signal);
+    }
+
     return this.queue.enqueue(async () => {
       if (!this.engine) {
         throw new WebLLMError('INFERENCE_FAILED', 'MLC engine not initialized');
@@ -216,6 +253,10 @@ export class MLCBackend implements InferenceBackend {
     req: ChatCompletionRequest,
     signal?: AbortSignal,
   ): AsyncIterable<ChatCompletionChunk> {
+    if (!this.engine && this.initPromise) {
+      await this.waitForInit(signal);
+    }
+
     if (!this.engine) {
       throw new WebLLMError('INFERENCE_FAILED', 'MLC engine not initialized');
     }
@@ -256,6 +297,8 @@ export class MLCBackend implements InferenceBackend {
       this.loadAbortController.abort();
       this.loadAbortController = null;
     }
+
+    this.initPromise = null;
 
     // Terminate worker if it exists (covers both loading and loaded states)
     if (this.worker) {
