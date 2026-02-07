@@ -19,19 +19,21 @@ interface SendOptions {
 
 export function useChat() {
   const sendMessage = useCallback(
-    async (text: string, conversationId: string, abortSignal: AbortSignal, opts: SendOptions) => {
+    async (text: string, conversationId: string, abortSignal: AbortSignal, opts: SendOptions, options?: { skipUserMessage?: boolean }) => {
       const store = useStore.getState();
       const { client, mode } = store;
       if (!client) return;
 
-      // Add user message to conversation
-      const userMsg: ChatMessage = {
-        id: nanoid(),
-        role: 'user',
-        content: text,
-        createdAt: Date.now(),
-      };
-      store.addMessage(conversationId, userMsg);
+      // Add user message to conversation (skip when regenerating)
+      if (!options?.skipUserMessage) {
+        const userMsg: ChatMessage = {
+          id: nanoid(),
+          role: 'user',
+          content: text,
+          createdAt: Date.now(),
+        };
+        store.addMessage(conversationId, userMsg);
+      }
 
       store.setLastRouteDecision(null);
 
