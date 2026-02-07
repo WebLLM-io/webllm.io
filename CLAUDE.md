@@ -175,7 +175,7 @@ Chat errors render as inline error cards with a "Retry" button that re-sends the
 - @mlc-ai/web-llm as optional peerDependency (dynamic import)
 - Astro apps (web, docs) inherit `astro/tsconfigs/strict`, not monorepo tsconfig
 - Cross-app navigation: all sub-app logos/titles link back to main site `/` (not their own base path)
-- Copyright notice: all app footers display `© 2025 WebLLM.io · MIT License`
+- Copyright notice: all app footers display `© 2026 WebLLM.io · MIT License`
 - License: MIT
 
 ## Content Accuracy Conventions
