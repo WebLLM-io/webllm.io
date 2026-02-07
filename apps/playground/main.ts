@@ -42,9 +42,9 @@ const GRADE_THRESHOLDS: Record<string, string> = {
 
 // Recommended models per grade (matches mlc-backend.ts)
 const RECOMMENDED_MODELS: Record<string, string> = {
-  S: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-  A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-  B: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+  S: 'Qwen3-8B-q4f16_1-MLC',
+  A: 'Qwen3-8B-q4f16_1-MLC',
+  B: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
   C: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
 };
 
@@ -312,12 +312,20 @@ async function checkCacheStatusInBackground() {
   }
 }
 
+function isQwenModel(modelId: string): boolean {
+  return /qwen/i.test(modelId);
+}
+
 function sortModelOptions() {
   modelOptions.sort((a, b) => {
     // Cached models first
     if (a.cached !== b.cached) return a.cached ? -1 : 1;
     // Then recommended models
     if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+    // Then Qwen models (brand priority)
+    const aQwen = isQwenModel(a.model_id);
+    const bQwen = isQwenModel(b.model_id);
+    if (aQwen !== bQwen) return aQwen ? -1 : 1;
     // Then alphabetically
     return a.model_id.localeCompare(b.model_id);
   });
