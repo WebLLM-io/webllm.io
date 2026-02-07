@@ -64,7 +64,7 @@ export function Sidebar({ isOpen, onClose, onApplySettings }: Props) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
-            <span className="font-semibold text-sm">WebLLM Chat</span>
+            <span className="font-semibold text-sm">WebLLM.io Chat</span>
           </a>
           <button
             onClick={onClose}

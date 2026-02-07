@@ -18,7 +18,7 @@ export function WelcomePage() {
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-zinc-200 mb-2">WebLLM Chat</h2>
+        <h2 className="text-xl font-semibold text-zinc-200 mb-2">WebLLM.io Chat</h2>
         <p className="text-zinc-500 text-sm mb-6">Run large language models directly in your browser.</p>
         <button
           onClick={handleNewChat}

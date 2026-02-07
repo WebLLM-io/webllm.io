@@ -36,7 +36,7 @@ export function ChatLayout() {
               <path d="M3 12h18M3 6h18M3 18h18" />
             </svg>
           </button>
-          <span className="text-sm font-medium text-zinc-300">WebLLM Chat</span>
+          <span className="text-sm font-medium text-zinc-300">WebLLM.io Chat</span>
         </header>
 
         <Outlet />
