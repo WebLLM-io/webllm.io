@@ -32,6 +32,7 @@ pnpm + Turborepo monorepo with the following packages:
 - **Streaming usage** — Cloud streaming requests include `stream_options: { include_usage: true }` so the final chunk carries token usage; `ChatCompletionChunk.usage` is optional (populated by OpenAI-compatible APIs)
 - **Playground mode switching** — Mode tab switches only change UI state and per-request `provider` field; client is NOT rebuilt on tab switch. Only "Apply & Reinitialize" triggers `initClient()`. The client is always created with all available backends (local + cloud).
 - **Progress stage parsing** — `initProgressCallback` parses `progress.text` from web-llm: `/shader|compile/i` → `'compile'` stage, `progress >= 1` → `'warmup'`, otherwise → `'download'`
+- **Thinking model support** — Two formats: `<think>` tags in `delta.content` (DeepSeek R1, QwQ, local MLC) and `delta.reasoning_content` field (OpenAI o1/o3). `reasoning_content` takes priority. Only the answer portion is stored in chat history.
 
 ## SDK Module Layout
 
@@ -164,6 +165,18 @@ When sending a message, a three-dot bounce animation appears in the assistant bu
 #### Chat Error & Retry
 
 Chat errors render as inline error cards with a "Retry" button that re-sends the last user message.
+
+#### Thinking/Reasoning Model Support
+
+The playground supports thinking/reasoning models that expose their chain-of-thought:
+
+- **`<think>` tags** (DeepSeek R1, QwQ, local MLC) — Parsed from `delta.content`; content between `<think>` and `</think>` is extracted as thinking
+- **`reasoning_content` field** (OpenAI o1/o3) — Read from `delta.reasoning_content`; takes priority over `<think>` tags
+- **Collapsible display** — Thinking content renders in a `<details class="thinking-section">` element with blue-tinted background
+- **Streaming indicator** — While thinking, summary shows "Thinking..." with animated dots; after completion, shows "Thought for N.Ns"
+- **Answer-only history** — Only the answer portion is stored in `chatHistory` to avoid sending thinking tokens back to the model
+- **Graceful abort** — Interrupting during thinking finalizes the timing display and appends "[Interrupted]"
+- **No-op for regular models** — Models without thinking content render identically to before (no `<details>` element created)
 
 ## Conventions
 
