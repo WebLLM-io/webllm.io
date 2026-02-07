@@ -3,12 +3,12 @@ import { createClient, checkCapability } from '@webllm-io/sdk';
 import { useStore } from '../../../store';
 
 export function useSDKInit() {
-  const {
-    setClient, setCapability, setPipelineStatus, setLoadProgress, setErrorMessage,
-    mode, localModel, localWebWorker, localCache,
-    cloudBaseURL, cloudApiKey, cloudModel, cloudTimeout, cloudRetries,
-    setLastRouteDecision,
-  } = useStore();
+  const setClient = useStore((s) => s.setClient);
+  const setCapability = useStore((s) => s.setCapability);
+  const setPipelineStatus = useStore((s) => s.setPipelineStatus);
+  const setLoadProgress = useStore((s) => s.setLoadProgress);
+  const setErrorMessage = useStore((s) => s.setErrorMessage);
+  const setLastRouteDecision = useStore((s) => s.setLastRouteDecision);
 
   const initClient = useCallback(() => {
     // Dispose existing client
@@ -65,11 +65,7 @@ export function useSDKInit() {
       setErrorMessage((err as Error).message);
       setPipelineStatus('error');
     }
-  }, [
-    setClient, setPipelineStatus, setLoadProgress, setErrorMessage, setLastRouteDecision,
-    mode, localModel, localWebWorker, localCache,
-    cloudBaseURL, cloudApiKey, cloudModel, cloudTimeout, cloudRetries,
-  ]);
+  }, [setClient, setPipelineStatus, setLoadProgress, setErrorMessage, setLastRouteDecision]);
 
   function handleProgress(p: { stage: string; progress: number; model: string }) {
     const stage = /shader|compile/i.test(p.stage) ? 'compile' : p.progress >= 1 ? 'ready' : 'download';
