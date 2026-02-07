@@ -21,6 +21,12 @@ interface PlaygroundConfig {
   cloudRetries: string;
 }
 
+interface ThinkingResult {
+  thinking: string;
+  answer: string;
+  isThinking: boolean;
+}
+
 type PipelineStatus = 'idle' | 'initializing' | 'loading' | 'ready' | 'error';
 
 const CONFIG_KEY = 'webllm-playground-config-v2';
@@ -739,6 +745,28 @@ function escapeHtml(str: string): string {
   return div.innerHTML;
 }
 
+function parseThinkingContent(rawContent: string, reasoningFromAPI: string): ThinkingResult {
+  // Format 2: reasoning_content field (OpenAI o1/o3) takes priority
+  if (reasoningFromAPI) {
+    return { thinking: reasoningFromAPI, answer: rawContent, isThinking: false };
+  }
+
+  // Format 1: <think> tags (DeepSeek R1, QwQ, local MLC models)
+  if (rawContent.startsWith('<think>')) {
+    const closeIdx = rawContent.indexOf('</think>');
+    if (closeIdx === -1) {
+      // Still inside thinking block
+      return { thinking: rawContent.slice(7), answer: '', isThinking: true };
+    }
+    const thinking = rawContent.slice(7, closeIdx);
+    const answer = rawContent.slice(closeIdx + 8);
+    return { thinking, answer, isThinking: false };
+  }
+
+  // No thinking content — regular model
+  return { thinking: '', answer: rawContent, isThinking: false };
+}
+
 // --- Chat Actions ---
 async function handleSend(retryText?: string) {
   const text = retryText || userInput.value.trim();
@@ -757,11 +785,50 @@ async function handleSend(retryText?: string) {
 
   lastRouteDecision = null;
   const { container, contentDiv } = addTypingIndicator();
-  let fullContent = '';
+  let rawContent = '';
+  let reasoningFromAPI = '';
   let modelName = '';
   let firstChunk = true;
   let lastChunk: ChatCompletionChunk | null = null;
   let inputText = '';
+  let thinkingStartTime = 0;
+
+  // DOM elements for thinking display (created lazily)
+  let thinkingDetails: HTMLDetailsElement | null = null;
+  let thinkingSummary: HTMLElement | null = null;
+  let thinkingContentEl: HTMLDivElement | null = null;
+  let answerEl: HTMLDivElement | null = null;
+
+  function ensureThinkingDOM() {
+    if (thinkingDetails) return;
+    contentDiv.innerHTML = '';
+    thinkingStartTime = Date.now();
+
+    thinkingDetails = document.createElement('details');
+    thinkingDetails.className = 'thinking-section';
+    thinkingDetails.open = true;
+
+    thinkingSummary = document.createElement('summary');
+    thinkingSummary.innerHTML = 'Thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
+    thinkingDetails.appendChild(thinkingSummary);
+
+    thinkingContentEl = document.createElement('div');
+    thinkingContentEl.className = 'thinking-content';
+    thinkingDetails.appendChild(thinkingContentEl);
+
+    contentDiv.appendChild(thinkingDetails);
+
+    answerEl = document.createElement('div');
+    answerEl.className = 'answer-text';
+    contentDiv.appendChild(answerEl);
+  }
+
+  function finalizeThinking() {
+    if (!thinkingDetails || !thinkingSummary) return;
+    const elapsed = ((Date.now() - thinkingStartTime) / 1000).toFixed(1);
+    thinkingSummary.textContent = `Thought for ${elapsed}s`;
+    thinkingDetails.open = false;
+  }
 
   try {
     // Capture input text for fallback estimation
@@ -785,11 +852,38 @@ async function handleSend(retryText?: string) {
         firstChunk = false;
       }
       if (!modelName && chunk.model) modelName = chunk.model;
-      const delta = chunk.choices[0]?.delta?.content ?? '';
-      fullContent += delta;
-      contentDiv.textContent = fullContent;
+
+      const delta = chunk.choices[0]?.delta;
+      const deltaContent = delta?.content ?? '';
+      const deltaReasoning = delta?.reasoning_content ?? '';
+
+      rawContent += deltaContent;
+      reasoningFromAPI += deltaReasoning;
+
+      const parsed = parseThinkingContent(rawContent, reasoningFromAPI);
+
+      if (parsed.thinking) {
+        // Has thinking content — use structured DOM
+        ensureThinkingDOM();
+        thinkingContentEl!.textContent = parsed.thinking;
+        if (parsed.answer) {
+          answerEl!.textContent = parsed.answer;
+        }
+        if (!parsed.isThinking) {
+          finalizeThinking();
+        }
+      } else {
+        // No thinking content — plain text rendering
+        contentDiv.textContent = parsed.answer;
+      }
+
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
       lastChunk = chunk;
+    }
+
+    // Finalize thinking if stream ended while still thinking
+    if (thinkingDetails && thinkingSummary && thinkingDetails.open) {
+      finalizeThinking();
     }
 
     // Accumulate token usage
@@ -798,9 +892,9 @@ async function handleSend(retryText?: string) {
       target.prompt += lastChunk.usage.prompt_tokens;
       target.completion += lastChunk.usage.completion_tokens;
     } else {
-      // Fallback: estimate tokens as chars / 4
+      // Fallback: estimate tokens as chars / 4 (include reasoning length)
       target.prompt += Math.ceil(inputText.length / 4);
-      target.completion += Math.ceil(fullContent.length / 4);
+      target.completion += Math.ceil((rawContent.length + reasoningFromAPI.length) / 4);
     }
     updateTokenDisplay();
 
@@ -826,12 +920,24 @@ async function handleSend(retryText?: string) {
       container.appendChild(metaContainer);
     }
 
-    chatHistory.push({ role: 'assistant', content: fullContent });
+    // Store only the answer in chat history (exclude thinking content)
+    const parsed = parseThinkingContent(rawContent, reasoningFromAPI);
+    chatHistory.push({ role: 'assistant', content: parsed.answer });
 
   } catch (err: any) {
     if (err.name === 'AbortError' || err.code === 'ABORTED') {
       if (firstChunk) contentDiv.innerHTML = '';
-      contentDiv.textContent = fullContent + ' [Interrupted]';
+      // Finalize thinking on abort
+      if (thinkingDetails && thinkingSummary && thinkingDetails.open) {
+        finalizeThinking();
+      }
+      const parsed = parseThinkingContent(rawContent, reasoningFromAPI);
+      if (thinkingDetails) {
+        // Structured DOM already exists; append interrupted marker to answer
+        answerEl!.textContent = (parsed.answer || '') + ' [Interrupted]';
+      } else {
+        contentDiv.textContent = (parsed.answer || rawContent) + ' [Interrupted]';
+      }
     } else {
       const lastUserText = text;
       renderChatError(container, contentDiv, err.message, () => {
