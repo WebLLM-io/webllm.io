@@ -1,0 +1,197 @@
+@import "tailwindcss";
+@import "highlight.js/styles/github-dark.css";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+body {
+  @apply bg-zinc-950 text-zinc-100 font-sans antialiased;
+  margin: 0;
+}
+
+#root {
+  height: 100dvh;
+  display: flex;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(63 63 70 / 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(63 63 70 / 0.8);
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  background: rgb(161 161 170);
+  border-radius: 50%;
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+/* Code block styling */
+.code-block-wrapper {
+  @apply rounded-lg overflow-hidden my-3 bg-zinc-900 border border-zinc-800;
+}
+
+.code-block-header {
+  @apply flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 text-xs text-zinc-400;
+}
+
+.code-lang {
+  @apply font-mono;
+}
+
+.code-copy-btn {
+  @apply text-xs text-zinc-400 hover:text-zinc-200 bg-transparent border-0 cursor-pointer px-2 py-0.5 rounded transition-colors;
+}
+
+.code-block-wrapper pre {
+  @apply m-0 p-3 overflow-x-auto;
+}
+
+.code-block-wrapper code {
+  @apply font-mono text-sm;
+}
+
+/* Markdown content styling */
+.markdown-content {
+  @apply text-sm leading-relaxed;
+}
+
+.markdown-content p {
+  @apply my-2;
+}
+
+.markdown-content p:first-child {
+  @apply mt-0;
+}
+
+.markdown-content p:last-child {
+  @apply mb-0;
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3,
+.markdown-content h4, .markdown-content h5, .markdown-content h6 {
+  @apply font-semibold mt-4 mb-2;
+}
+
+.markdown-content h1 { @apply text-xl; }
+.markdown-content h2 { @apply text-lg; }
+.markdown-content h3 { @apply text-base; }
+
+.markdown-content ul, .markdown-content ol {
+  @apply pl-6 my-2;
+}
+
+.markdown-content ul { @apply list-disc; }
+.markdown-content ol { @apply list-decimal; }
+
+.markdown-content li {
+  @apply my-1;
+}
+
+.markdown-content blockquote {
+  @apply border-l-2 border-zinc-600 pl-3 my-2 text-zinc-400 italic;
+}
+
+.markdown-content a {
+  @apply text-blue-400 hover:text-blue-300 underline;
+}
+
+.markdown-content table {
+  @apply w-full border-collapse my-3;
+}
+
+.markdown-content th, .markdown-content td {
+  @apply border border-zinc-700 px-3 py-1.5 text-left text-sm;
+}
+
+.markdown-content th {
+  @apply bg-zinc-800/50 font-medium;
+}
+
+.markdown-content code:not(pre code) {
+  @apply bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded text-xs font-mono;
+}
+
+.markdown-content hr {
+  @apply border-zinc-800 my-4;
+}
+
+/* User message markdown overrides */
+.user-markdown .markdown-content code:not(pre code) {
+  @apply bg-white/10;
+}
+
+.user-markdown .markdown-content a {
+  @apply text-blue-200 hover:text-white;
+}
+
+.user-markdown .markdown-content th,
+.user-markdown .markdown-content td {
+  @apply border-blue-400/30;
+}
+
+/* Thinking section */
+.thinking-section {
+  @apply bg-blue-950/30 border border-blue-900/30 rounded-lg mb-3 overflow-hidden;
+}
+
+.thinking-section summary {
+  @apply px-3 py-2 text-xs text-blue-300 cursor-pointer select-none hover:bg-blue-950/50 transition-colors;
+}
+
+.thinking-section .thinking-content {
+  @apply px-3 pb-3 text-xs text-zinc-400 whitespace-pre-wrap max-h-64 overflow-y-auto;
+}
+
+.thinking-dots span {
+  animation: thinking-dot 1.4s ease-in-out infinite;
+}
+
+.thinking-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-dot {
+  0%, 60%, 100% { opacity: 0.2; }
+  30% { opacity: 1; }
+}

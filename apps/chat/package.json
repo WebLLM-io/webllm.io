@@ -1,0 +1,37 @@
+{
+  "name": "@webllm-io/chat",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@webllm-io/sdk": "workspace:*",
+    "@mlc-ai/web-llm": "^0.2.80",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-router": "^7",
+    "zustand": "^5",
+    "idb-keyval": "^6",
+    "nanoid": "^5",
+    "marked": "^15",
+    "marked-highlight": "^2",
+    "dompurify": "^3",
+    "highlight.js": "^11",
+    "clsx": "^2",
+    "tailwind-merge": "^3"
+  },
+  "devDependencies": {
+    "vite": "^6",
+    "typescript": "^5.5",
+    "@webllm-io/tsconfig": "workspace:*",
+    "@vitejs/plugin-react": "^4",
+    "@tailwindcss/vite": "^4",
+    "tailwindcss": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
+  }
+}

@@ -10,6 +10,7 @@ pnpm + Turborepo monorepo with the following packages:
 - `apps/web` — `@webllm-io/web` Astro landing page (dark-themed brand portal)
 - `apps/docs` — `@webllm-io/docs` Astro Starlight documentation site
 - `apps/playground` — Vite + vanilla TS demo app
+- `apps/chat` — `@webllm-io/chat` React chat application (Vite + React 19 + Zustand + Tailwind CSS v4)
 - `tooling/tsconfig` — Shared TypeScript configurations
 
 ## Architecture Decisions
@@ -90,6 +91,14 @@ pnpm --filter @webllm-io/docs dev     # Start on localhost:4322
 
 Astro Starlight site. Content in `src/content/docs/` as MDX files. Sidebar structure: Getting Started (3), Guides (10), Concepts (5), API Reference (10), Examples (7), FAQ. Edit links point to GitHub `WebLLM-io/webllm.io` repo.
 
+### Chat App (apps/chat)
+
+```bash
+pnpm --filter @webllm-io/chat dev     # Start on localhost:5174
+```
+
+React 19 chat application with multi-conversation support. Tech stack: Vite 6, React Router v7, Zustand 5, Tailwind CSS v4, IndexedDB (idb-keyval). Feature-based module organization under `src/features/` (conversations, chat, settings, sdk). Shared markdown/thinking utilities ported from playground.
+
 ### Port Allocation
 
 | App | Port |
@@ -97,6 +106,7 @@ Astro Starlight site. Content in `src/content/docs/` as MDX files. Sidebar struc
 | `apps/web` | 4321 |
 | `apps/docs` | 4322 |
 | `apps/playground` | 5173 |
+| `apps/chat` | 5174 |
 
 #### Settings Panel
 
@@ -213,8 +223,9 @@ Assistant messages are rendered as Markdown with syntax highlighting:
 
 ## Deployment
 
-- **Hosting**: Cloudflare Pages, single domain `webllm.io`
-- **Project name**: `webllm-io`
+- **Hosting**: Cloudflare Pages
+- **Main site project name**: `webllm-io` (domain: `webllm.io`)
+- **Chat app project name**: `webllm-chat` (domain: `chat.webllm.io`)
 
 ### URL Mapping
 
@@ -223,6 +234,7 @@ Assistant messages are rendered as Markdown with syntax highlighting:
 | Landing Page (`apps/web`) | `webllm.io/` | — (root) |
 | Documentation (`apps/docs`) | `webllm.io/docs/` | `base: '/docs'` in astro.config.mjs |
 | Playground (`apps/playground`) | `webllm.io/playground/` | `base: '/playground/'` in vite.config.ts |
+| Chat (`apps/chat`) | `chat.webllm.io/` | — (separate Cloudflare Pages project) |
 
 ### Build
 
@@ -231,8 +243,9 @@ Assistant messages are rendered as Markdown with syntax highlighting:
 ### CI/CD Workflows
 
 - **`.github/workflows/deploy.yml`** — Deploys `dist/site/` to Cloudflare Pages on push to main
+- **`.github/workflows/deploy-chat.yml`** — Deploys `apps/chat/dist` to Cloudflare Pages project `webllm-chat` on push to main when `apps/chat/**` or `packages/sdk/**` changes
 - **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main (uses npm Trusted Publishing via OIDC, no token needed). Requires Node 24+ (npm >= 11.5.1 for OIDC support). `changesets/action` only creates version PRs; publishing is a separate step to avoid `.npmrc` conflicts with OIDC auth. After publishing, `pnpm changeset tag` creates git tags (e.g., `@webllm-io/sdk@1.0.0`) and pushes them to origin.
-- **Changesets ignore list** — Only `@webllm-io/sdk` is published; private app packages (`web`, `docs`, `playground`) are listed in `.changeset/config.json` `ignore` to skip version management. Note: `tsconfig` cannot be ignored because `sdk` depends on it.
+- **Changesets ignore list** — Only `@webllm-io/sdk` is published; private app packages (`web`, `docs`, `playground`, `chat`) are listed in `.changeset/config.json` `ignore` to skip version management. Note: `tsconfig` cannot be ignored because `sdk` depends on it.
 
 ### Required GitHub Secrets
 

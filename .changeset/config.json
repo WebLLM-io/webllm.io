@@ -10,6 +10,7 @@
   "ignore": [
     "@webllm-io/web",
     "@webllm-io/docs",
-    "@webllm-io/playground"
+    "@webllm-io/playground",
+    "@webllm-io/chat"
   ]
 }
