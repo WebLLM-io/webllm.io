@@ -748,7 +748,8 @@ function escapeHtml(str: string): string {
 function parseThinkingContent(rawContent: string, reasoningFromAPI: string): ThinkingResult {
   // Format 2: reasoning_content field (OpenAI o1/o3) takes priority
   if (reasoningFromAPI) {
-    return { thinking: reasoningFromAPI, answer: rawContent, isThinking: false };
+    // Still thinking until answer content starts arriving
+    return { thinking: reasoningFromAPI, answer: rawContent, isThinking: !rawContent };
   }
 
   // Format 1: <think> tags (DeepSeek R1, QwQ, local MLC models)
@@ -792,6 +793,7 @@ async function handleSend(retryText?: string) {
   let lastChunk: ChatCompletionChunk | null = null;
   let inputText = '';
   let thinkingStartTime = 0;
+  let thinkingFinalized = false;
 
   // DOM elements for thinking display (created lazily)
   let thinkingDetails: HTMLDetailsElement | null = null;
@@ -824,7 +826,8 @@ async function handleSend(retryText?: string) {
   }
 
   function finalizeThinking() {
-    if (!thinkingDetails || !thinkingSummary) return;
+    if (thinkingFinalized || !thinkingDetails || !thinkingSummary) return;
+    thinkingFinalized = true;
     const elapsed = ((Date.now() - thinkingStartTime) / 1000).toFixed(1);
     thinkingSummary.textContent = `Thought for ${elapsed}s`;
     thinkingDetails.open = false;
@@ -866,6 +869,7 @@ async function handleSend(retryText?: string) {
         // Has thinking content — use structured DOM
         ensureThinkingDOM();
         thinkingContentEl!.textContent = parsed.thinking;
+        thinkingContentEl!.scrollTop = thinkingContentEl!.scrollHeight;
         if (parsed.answer) {
           answerEl!.textContent = parsed.answer;
         }
