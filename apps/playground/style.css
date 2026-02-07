@@ -257,14 +257,49 @@ body {
 }
 
 .combobox-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   font-size: 0.8rem;
   color: var(--text-secondary);
   cursor: pointer;
   transition: background 0.15s;
-  white-space: nowrap;
+}
+
+.model-name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-badges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.model-badge {
+  font-size: 0.55rem;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badge-downloaded {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.badge-recommended {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent);
 }
 
 .combobox-option:hover {

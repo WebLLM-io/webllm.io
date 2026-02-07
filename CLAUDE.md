@@ -123,6 +123,10 @@ The Local Model ID field is a combobox component with the following features:
 - **Keyboard navigation** — Arrow Up/Down to navigate, Enter to select, Escape to close, Tab to close and move focus
 - **Model count** — Shows total available models (e.g., "153 models available")
 - **GitHub link** — "Browse on GitHub →" link to view full model config source
+- **Model badges** — Visual indicators for model status:
+  - **Downloaded** (green badge) — Model is cached in OPFS, detected via `hasModelInCache()`
+  - **Recommended** (blue badge) — Model matches device grade (S/A: Llama-3.1-8B, B: Phi-3.5-mini, C: Qwen2.5-1.5B)
+- **Smart sorting** — Models sorted by: cached first → recommended → alphabetical
 
 #### Integration Code Snippet
 

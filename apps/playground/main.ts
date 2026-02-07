@@ -1,8 +1,14 @@
-import { createClient, checkCapability } from '@webllm-io/sdk';
+import { createClient, checkCapability, hasModelInCache } from '@webllm-io/sdk';
 import type { WebLLMClient, ChatCompletionChunk, Message } from '@webllm-io/sdk';
 import { prebuiltAppConfig } from '@mlc-ai/web-llm';
 
 // --- Types ---
+interface ModelOption {
+  model_id: string;
+  cached: boolean;
+  recommended: boolean;
+}
+
 interface PlaygroundConfig {
   mode: string;
   localModel: string;
@@ -24,6 +30,14 @@ const GRADE_THRESHOLDS: Record<string, string> = {
   A: '\u2265 4096 MB',
   B: '\u2265 2048 MB',
   C: '< 2048 MB',
+};
+
+// Recommended models per grade (matches mlc-backend.ts)
+const RECOMMENDED_MODELS: Record<string, string> = {
+  S: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+  A: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+  B: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+  C: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
 };
 
 // --- DOM Elements ---
@@ -99,10 +113,11 @@ let cloudTokens = { prompt: 0, completion: 0 };
 let appliedConfig: PlaygroundConfig | null = null;
 
 // --- Combobox State ---
-let modelOptions: string[] = [];
-let filteredOptions: string[] = [];
+let modelOptions: ModelOption[] = [];
+let filteredOptions: ModelOption[] = [];
 let highlightedIndex = -1;
 let isComboboxOpen = false;
+let detectedGrade: string = 'C';
 
 // --- Pipeline Status ---
 function setPipelineStatus(status: PipelineStatus) {
@@ -250,10 +265,51 @@ function updateApplyButton() {
 
 // --- Combobox Logic ---
 function initModelOptions() {
-  modelOptions = prebuiltAppConfig.model_list.map((m) => m.model_id);
+  const modelIds = prebuiltAppConfig.model_list.map((m) => m.model_id);
+  modelOptions = modelIds.map((id) => ({
+    model_id: id,
+    cached: false,
+    recommended: false,
+  }));
   filteredOptions = [...modelOptions];
   modelCountEl.textContent = `${modelOptions.length} models available`;
   renderComboboxOptions();
+
+  // Check cache status in background
+  checkCacheStatusInBackground();
+}
+
+async function checkCacheStatusInBackground() {
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < modelOptions.length; i += BATCH_SIZE) {
+    const batch = modelOptions.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (opt) => {
+        try {
+          return { id: opt.model_id, cached: await hasModelInCache(opt.model_id) };
+        } catch {
+          return { id: opt.model_id, cached: false };
+        }
+      })
+    );
+    for (const { id, cached } of results) {
+      const opt = modelOptions.find((m) => m.model_id === id);
+      if (opt) opt.cached = cached;
+    }
+    sortModelOptions();
+    filterComboboxOptions(settingLocalModel.value);
+  }
+}
+
+function sortModelOptions() {
+  modelOptions.sort((a, b) => {
+    // Cached models first
+    if (a.cached !== b.cached) return a.cached ? -1 : 1;
+    // Then recommended models
+    if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+    // Then alphabetically
+    return a.model_id.localeCompare(b.model_id);
+  });
 }
 
 function filterComboboxOptions(query: string) {
@@ -261,7 +317,7 @@ function filterComboboxOptions(query: string) {
   if (!q) {
     filteredOptions = [...modelOptions];
   } else {
-    filteredOptions = modelOptions.filter((id) => id.toLowerCase().includes(q));
+    filteredOptions = modelOptions.filter((opt) => opt.model_id.toLowerCase().includes(q));
   }
   highlightedIndex = filteredOptions.length > 0 ? 0 : -1;
   renderComboboxOptions();
@@ -287,9 +343,9 @@ function renderComboboxOptions() {
   }
 
   localModelListbox.innerHTML = filteredOptions
-    .map((id, idx) => {
+    .map((opt, idx) => {
       const isHighlighted = idx === highlightedIndex;
-      const isSelected = id === currentValue;
+      const isSelected = opt.model_id === currentValue;
       const classes = [
         'combobox-option',
         isHighlighted ? 'highlighted' : '',
@@ -297,7 +353,15 @@ function renderComboboxOptions() {
       ]
         .filter(Boolean)
         .join(' ');
-      return `<li class="${classes}" role="option" data-value="${escapeHtml(id)}" data-index="${idx}">${highlightMatch(id, query)}</li>`;
+
+      let badges = '';
+      if (opt.cached) badges += '<span class="model-badge badge-downloaded">Downloaded</span>';
+      if (opt.recommended) badges += '<span class="model-badge badge-recommended">Recommended</span>';
+
+      return `<li class="${classes}" role="option" data-value="${escapeHtml(opt.model_id)}" data-index="${idx}">
+        <span class="model-name">${highlightMatch(opt.model_id, query)}</span>
+        ${badges ? `<span class="model-badges">${badges}</span>` : ''}
+      </li>`;
     })
     .join('');
 }
@@ -430,6 +494,15 @@ async function detectCapability() {
       batteryInfoEl.textContent = 'N/A';
     }
 
+    // Update recommended model based on detected grade
+    detectedGrade = report.grade;
+    const recommendedModelId = RECOMMENDED_MODELS[detectedGrade];
+    for (const opt of modelOptions) {
+      opt.recommended = opt.model_id === recommendedModelId;
+    }
+    sortModelOptions();
+    filterComboboxOptions(settingLocalModel.value);
+
   } catch {
     webgpuStatus.textContent = 'Error';
     webgpuStatus.className = 'status-value error';
@@ -555,6 +628,21 @@ function handleProgress(p: { stage: string; progress: number; model: string }) {
     updatePipelineStage('ready');
     setPipelineStatus('ready');
     setTimeout(() => hideProgress(), 800);
+    // Refresh cache status for this model
+    refreshModelCacheStatus(p.model);
+  }
+}
+
+async function refreshModelCacheStatus(modelId: string) {
+  const opt = modelOptions.find((m) => m.model_id === modelId);
+  if (opt) {
+    try {
+      opt.cached = await hasModelInCache(modelId);
+    } catch {
+      opt.cached = false;
+    }
+    sortModelOptions();
+    filterComboboxOptions(settingLocalModel.value);
   }
 }
 
@@ -871,7 +959,7 @@ settingLocalModel.addEventListener('keydown', (e) => {
     case 'Enter':
       e.preventDefault();
       if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
-        selectOption(filteredOptions[highlightedIndex]);
+        selectOption(filteredOptions[highlightedIndex].model_id);
       } else {
         closeCombobox();
       }
