@@ -44,9 +44,9 @@ const client = createClient({
    - Assigns device grade (S/A/B/C)
 
 2. **Model Selection**
-   - **S grade (≥8GB):** `Llama-3.1-8B-Instruct-q4f16_1-MLC`
-   - **A grade (≥4GB):** `Llama-3.1-8B-Instruct-q4f16_1-MLC`
-   - **B grade (≥2GB):** `Phi-3.5-mini-instruct-q4f16_1-MLC`
+   - **S grade (≥8GB):** `Qwen3-8B-q4f16_1-MLC`
+   - **A grade (≥4GB):** `Qwen3-8B-q4f16_1-MLC`
+   - **B grade (≥2GB):** `Qwen2.5-3B-Instruct-q4f16_1-MLC`
    - **C grade (&lt;2GB):** `Qwen2.5-1.5B-Instruct-q4f16_1-MLC`
 
 3. **Worker Initialization**
@@ -86,8 +86,8 @@ import { createClient } from '@webllm-io/sdk'
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',      // S/A grade
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',    // B grade
+      high: 'Qwen3-8B-q4f16_1-MLC',      // S/A grade
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',    // B grade
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'        // C grade
     }
   },
@@ -118,8 +118,8 @@ You can customize more aspects at this level:
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      high: 'Qwen3-8B-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
     },
     useWorker: true,    // Run in Web Worker (default: true)
@@ -157,7 +157,7 @@ import { fetchSSE } from '@webllm-io/sdk/providers/fetch'
 
 const client = createClient({
   local: mlc({
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useWorker: true,
     useCache: false,  // Disable cache for always-fresh downloads
     workerUrl: '/custom-worker.js',  // Custom worker script
@@ -305,8 +305,8 @@ const client = createClient({ local: 'auto' })
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      high: 'Qwen3-8B-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
     }
   }
@@ -319,13 +319,13 @@ const client = createClient({
 // Before (Responsive)
 const client = createClient({
   local: {
-    tiers: { high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC' }
+    tiers: { high: 'Qwen3-8B-q4f16_1-MLC' }
   }
 })
 
 // After (Full Control)
 const client = createClient({
-  local: mlc({ model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC' })
+  local: mlc({ model: 'Qwen3-8B-q4f16_1-MLC' })
 })
 ```
 

@@ -66,7 +66,7 @@ Override the model for this request. If not specified, uses the model configured
 
 ```ts
 model: 'gpt-4o-mini'  // Cloud
-model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'  // Local
+model: 'Qwen3-8B-q4f16_1-MLC'  // Local
 ```
 
 #### `stream` (optional)
@@ -171,7 +171,7 @@ console.log(response.choices[0].message.content);
 // "Hello! How can I assist you today?"
 
 console.log(response.model);
-// "gpt-4o-mini" or "Llama-3.1-8B-Instruct-q4f16_1-MLC"
+// "gpt-4o-mini" or "Qwen3-8B-q4f16_1-MLC"
 
 console.log(response.usage);
 // { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 }

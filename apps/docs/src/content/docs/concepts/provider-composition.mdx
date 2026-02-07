@@ -36,11 +36,11 @@ const client1 = createClient({
 })
 // Resolves to: mlc() with automatic device-based model selection
 
-// Input: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+// Input: 'Qwen3-8B-q4f16_1-MLC'
 const client2 = createClient({
-  local: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+  local: 'Qwen3-8B-q4f16_1-MLC'
 })
-// Resolves to: mlc({ model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC' })
+// Resolves to: mlc({ model: 'Qwen3-8B-q4f16_1-MLC' })
 ```
 
 ### Object Inputs
@@ -51,7 +51,7 @@ Object inputs provide structured configuration:
 // Input: LocalObjectConfig
 const client = createClient({
   local: {
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useWorker: true,
     useCache: true
   }
@@ -68,8 +68,8 @@ The responsive API uses a `tiers` object:
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      high: 'Qwen3-8B-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
     }
   }
@@ -87,7 +87,7 @@ import { mlc } from '@webllm-io/sdk/providers/mlc'
 // Input: mlc() provider function
 const client = createClient({
   local: mlc({
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useWorker: false,
     logLevel: 'DEBUG'
   })
@@ -289,7 +289,7 @@ createClient({
 // User writes:
 createClient({
   local: {
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useCache: false
   }
 })
@@ -297,7 +297,7 @@ createClient({
 // SDK transforms to:
 createClient({
   local: mlc({
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useWorker: true,  // Default
     useCache: false
   })
@@ -497,7 +497,7 @@ import { mlc } from '@webllm-io/sdk/providers/mlc'
 
 createClient({
   local: mlc({
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     logLevel: 'DEBUG',
     initProgressCallback: (report) => {
       console.log(`Loading: ${report.text}`)

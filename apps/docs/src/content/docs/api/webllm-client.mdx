@@ -40,7 +40,7 @@ See [Chat Completions API](/api/chat-completions) for detailed documentation.
 Explicitly loads a local MLC model into memory. Useful for preloading models before inference.
 
 **Parameters:**
-- `modelId` (string) - MLC model identifier (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`)
+- `modelId` (string) - MLC model identifier (e.g., `'Qwen3-8B-q4f16_1-MLC'`)
 
 **Returns:** `Promise<void>`
 
@@ -49,7 +49,7 @@ Explicitly loads a local MLC model into memory. Useful for preloading models bef
 **Example:**
 
 ```ts
-await client.local.load('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+await client.local.load('Qwen3-8B-q4f16_1-MLC');
 console.log('Model preloaded');
 ```
 
@@ -228,7 +228,7 @@ const response1 = await client.chat.completions.create({
 
 // Switch to larger model
 await client.local.unload();
-await client.local.load('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+await client.local.load('Qwen3-8B-q4f16_1-MLC');
 const response2 = await client.chat.completions.create({
   messages: [{ role: 'user', content: 'Complex reasoning task' }],
   provider: 'local'

@@ -126,8 +126,8 @@ The Local Model ID field is a combobox component with the following features:
 - **GitHub link** — "Browse on GitHub →" link to view full model config source
 - **Model badges** — Visual indicators for model status:
   - **Downloaded** (green badge) — Model is cached in OPFS, detected via `hasModelInCache()`
-  - **Recommended** (blue badge) — Model matches device grade (S/A: Llama-3.1-8B, B: Phi-3.5-mini, C: Qwen2.5-1.5B)
-- **Smart sorting** — Models sorted by: cached first → recommended → alphabetical
+  - **Recommended** (blue badge) — Model matches device grade (S/A: Qwen3-8B, B: Qwen2.5-3B, C: Qwen2.5-1.5B)
+- **Smart sorting** — Models sorted by: cached first → recommended → Qwen models → alphabetical
 
 #### Integration Code Snippet
 
@@ -135,7 +135,7 @@ The sidebar footer contains a collapsible "Integration Code" panel (`<details>`)
 
 #### Model Tag & Route Badge
 
-Assistant reply messages display the responding model name (e.g., `Llama-3.1-8B-Instruct-q4f16_1-MLC` or `gpt-4o-mini`) as a tag below the message content, extracted from the first streaming chunk's `model` field. A route badge (local/cloud icon) appears next to the model tag, showing which backend served the response. Data comes from the SDK `onRoute` callback.
+Assistant reply messages display the responding model name (e.g., `Qwen3-8B-q4f16_1-MLC` or `gpt-4o-mini`) as a tag below the message content, extracted from the first streaming chunk's `model` field. A route badge (local/cloud icon) appears next to the model tag, showing which backend served the response. Data comes from the SDK `onRoute` callback.
 
 #### Runtime Status Card
 

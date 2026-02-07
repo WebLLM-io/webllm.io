@@ -79,7 +79,7 @@ import { mlc } from '@webllm-io/sdk/providers/mlc';
 
 const client = await createClient({
   local: mlc({
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     onProgress: (report) => {
       console.log(report.text, `${Math.round(report.progress * 100)}%`);
     }
@@ -111,7 +111,7 @@ Avoid unnecessary downloads by checking if a model is already cached:
 ```typescript
 import { hasModelInCache } from '@webllm-io/sdk';
 
-const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+const modelId = 'Qwen3-8B-q4f16_1-MLC';
 
 if (await hasModelInCache(modelId)) {
   console.log('Model is cached, initialization will be fast!');

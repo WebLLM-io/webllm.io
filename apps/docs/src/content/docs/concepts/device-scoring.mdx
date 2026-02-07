@@ -11,9 +11,9 @@ The SDK uses a four-tier grading system based on available GPU memory:
 
 | Grade | VRAM Range | Typical Devices | Default Model | Model Size |
 |-------|------------|-----------------|---------------|------------|
-| **S** | ≥8192 MB | High-end desktop GPUs (RTX 3080+, M2 Max+) | Llama-3.1-8B-Instruct-q4f16_1-MLC | ~5.5 GB |
-| **A** | ≥4096 MB | Mid-range GPUs (RTX 3060, M1/M2 Pro, iPad Pro) | Llama-3.1-8B-Instruct-q4f16_1-MLC | ~5.5 GB |
-| **B** | ≥2048 MB | Entry-level GPUs (Integrated Intel/AMD, M1 base) | Phi-3.5-mini-instruct-q4f16_1-MLC | ~2.2 GB |
+| **S** | ≥8192 MB | High-end desktop GPUs (RTX 3080+, M2 Max+) | Qwen3-8B-q4f16_1-MLC | ~5.5 GB |
+| **A** | ≥4096 MB | Mid-range GPUs (RTX 3060, M1/M2 Pro, iPad Pro) | Qwen3-8B-q4f16_1-MLC | ~5.5 GB |
+| **B** | ≥2048 MB | Entry-level GPUs (Integrated Intel/AMD, M1 base) | Qwen2.5-3B-Instruct-q4f16_1-MLC | ~2.2 GB |
 | **C** | &lt;2048 MB | Mobile devices, older laptops | Qwen2.5-1.5B-Instruct-q4f16_1-MLC | ~1.0 GB |
 
 **Important:** All grades support local inference. The C grade uses a lightweight but capable 1.5B parameter model, ensuring even low-end devices can run local AI.
@@ -79,8 +79,8 @@ const client = createClient({
 })
 
 // Automatically selects:
-// S/A grade → Llama-3.1-8B-Instruct-q4f16_1-MLC
-// B grade   → Phi-3.5-mini-instruct-q4f16_1-MLC
+// S/A grade → Qwen3-8B-q4f16_1-MLC
+// B grade   → Qwen2.5-3B-Instruct-q4f16_1-MLC
 // C grade   → Qwen2.5-1.5B-Instruct-q4f16_1-MLC
 ```
 
@@ -93,7 +93,7 @@ const client = createClient({
   local: {
     tiers: {
       high: 'Llama-3.1-70B-Instruct-q3f16_1-MLC',    // For S/A grade
-      medium: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',   // For B grade
+      medium: 'Qwen3-8B-q4f16_1-MLC',   // For B grade
       low: 'TinyLlama-1.1B-Chat-q4f16_1-MLC'         // For C grade
     }
   }
@@ -258,8 +258,8 @@ If you need specific quality/speed trade-offs:
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',   // Quality focus
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC', // Balanced
+      high: 'Qwen3-8B-q4f16_1-MLC',   // Quality focus
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', // Balanced
       low: 'TinyLlama-1.1B-Chat-q4f16_1-MLC'       // Speed focus
     }
   }

@@ -107,7 +107,7 @@ import { mlc } from '@webllm-io/sdk/providers/mlc';
 import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
 
 const ai = createClient({
-  local: mlc({ model: 'Phi-3.5-mini-instruct-q4f16_1-MLC' }),
+  local: mlc({ model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC' }),
   cloud: fetchSSE({ baseURL: 'https://api.example.com/v1', apiKey: '...' }),
 });
 ```

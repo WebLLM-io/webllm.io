@@ -58,7 +58,7 @@ Click the **Settings** button to configure local and cloud options.
 
 - **Model** — Override auto-selection with a specific model name
   - Leave empty for automatic device-based selection
-  - Example: `Llama-3.1-8B-Instruct-q4f16_1-MLC`
+  - Example: `Qwen3-8B-q4f16_1-MLC`
 - **WebWorker** — Run inference in a Web Worker (default: **Enabled**)
   - Keeps UI responsive during inference
   - Recommended for production use
@@ -91,7 +91,7 @@ Click **Apply & Reinitialize** to apply changes and restart the client.
 
 Each assistant message displays the model that generated the response:
 
-- For local inference: `Llama-3.1-8B-Instruct-q4f16_1-MLC` (example)
+- For local inference: `Qwen3-8B-q4f16_1-MLC` (example)
 - For cloud inference: `gpt-4o-mini` (example)
 
 The model name is extracted from the first streaming chunk's `model` field and displayed as an italic tag below the message.

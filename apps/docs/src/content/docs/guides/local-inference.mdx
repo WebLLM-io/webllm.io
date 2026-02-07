@@ -47,7 +47,7 @@ You can specify a model explicitly:
 
 ```typescript
 const client = createClient({
-  local: 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+  local: 'Qwen3-8B-q4f16_1-MLC'
 });
 ```
 
@@ -56,7 +56,7 @@ Or use an object configuration for more control:
 ```typescript
 const client = createClient({
   local: {
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useCache: true,        // Enable OPFS caching (default: true)
     useWebWorker: true     // Run in Web Worker (default: true)
   }
@@ -71,8 +71,8 @@ For adaptive model selection based on device capabilities, use the `tiers` confi
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',         // S/A grade (≥4GB VRAM)
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',        // B grade (≥2GB VRAM)
+      high: 'Qwen3-8B-q4f16_1-MLC',         // S/A grade (≥4GB VRAM)
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',        // B grade (≥2GB VRAM)
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'           // C grade (<2GB VRAM)
     }
   }
@@ -114,7 +114,7 @@ Models are automatically cached using the Origin Private File System (OPFS) to a
 ```typescript
 const client = createClient({
   local: {
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useCache: true  // default
   }
 });
@@ -125,7 +125,7 @@ To disable caching:
 ```typescript
 const client = createClient({
   local: {
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useCache: false
   }
 });
@@ -135,10 +135,10 @@ Check cache status and manage cached models:
 
 ```typescript
 // Check if model is cached
-const isCached = await client.hasModelInCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+const isCached = await client.hasModelInCache('Qwen3-8B-q4f16_1-MLC');
 
 // Delete model from cache
-await client.deleteModelFromCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+await client.deleteModelFromCache('Qwen3-8B-q4f16_1-MLC');
 ```
 
 ## Dynamic Model Selection
@@ -149,10 +149,10 @@ Use a function to decide the model at runtime based on device statistics:
 const client = createClient({
   local: (stats) => {
     if (stats.grade === 'S' || stats.grade === 'A') {
-      return 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+      return 'Qwen3-8B-q4f16_1-MLC';
     }
     if (stats.grade === 'B') {
-      return 'Phi-3.5-mini-instruct-q4f16_1-MLC';
+      return 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
     }
     // Grade C or unsupported
     return 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';

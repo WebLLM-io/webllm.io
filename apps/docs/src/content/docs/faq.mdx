@@ -212,7 +212,7 @@ Models are downloaded once and cached in OPFS (Origin Private File System) for f
 ```typescript
 import { hasModelInCache } from '@webllm-io/sdk';
 
-const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+const modelId = 'Qwen3-8B-q4f16_1-MLC';
 const isCached = await hasModelInCache(modelId);
 
 if (isCached) {
@@ -227,7 +227,7 @@ if (isCached) {
 ```typescript
 import { deleteModelFromCache } from '@webllm-io/sdk';
 
-const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+const modelId = 'Qwen3-8B-q4f16_1-MLC';
 await deleteModelFromCache(modelId);
 console.log('Model removed from cache');
 ```
@@ -347,7 +347,7 @@ COOP/COEP headers are not set. See [COOP/COEP Headers](#coopcoep-headers) sectio
 ```typescript
 import { deleteModelFromCache } from '@webllm-io/sdk';
 
-await deleteModelFromCache('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+await deleteModelFromCache('Qwen3-8B-q4f16_1-MLC');
 // Retry initialization
 ```
 

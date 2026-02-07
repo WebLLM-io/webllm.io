@@ -42,7 +42,7 @@ Fixed model ID to use regardless of device capability. Overrides tier-based sele
 
 - Type: `string`
 - Default: `undefined` (uses tier-based auto-selection)
-- Example: `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`
+- Example: `'Qwen3-8B-q4f16_1-MLC'`
 
 #### `tiers` (optional)
 
@@ -64,15 +64,15 @@ interface TiersConfig {
 - `low` - Used for grade C (&lt;2GB VRAM)
 
 **Values:**
-- Model ID string (e.g., `'Llama-3.1-8B-Instruct-q4f16_1-MLC'`)
+- Model ID string (e.g., `'Qwen3-8B-q4f16_1-MLC'`)
 - `'auto'` - Use SDK's default model for this tier
 - `null` - Disable local inference for this tier
 
 **Default tiers:**
 ```ts
 {
-  high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-  medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+  high: 'Qwen3-8B-q4f16_1-MLC',
+  medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
   low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
 }
 ```
@@ -116,7 +116,7 @@ const client = createClient({
 ```ts
 const client = createClient({
   local: mlc({
-    model: 'Phi-3.5-mini-instruct-q4f16_1-MLC'
+    model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC'
   })
 });
 // Always uses Phi-3.5-mini regardless of device capability
@@ -128,8 +128,8 @@ const client = createClient({
 const client = createClient({
   local: mlc({
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      high: 'Qwen3-8B-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
       low: null  // Disable local inference on low-end devices
     }
   })
@@ -165,8 +165,8 @@ import { fetchSSE } from '@webllm-io/sdk/providers/fetch';
 const client = createClient({
   local: mlc({
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      high: 'Qwen3-8B-q4f16_1-MLC',
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
       low: null  // Low-end devices fall back to cloud
     }
   }),
@@ -183,7 +183,7 @@ const client = createClient({
 ```ts
 const client = createClient({
   local: mlc({
-    model: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+    model: 'Qwen3-8B-q4f16_1-MLC',
     useCache: true,
     useWebWorker: true
   }),
@@ -197,7 +197,7 @@ const client = createClient({
   }
 });
 
-await client.local.load('Llama-3.1-8B-Instruct-q4f16_1-MLC');
+await client.local.load('Qwen3-8B-q4f16_1-MLC');
 ```
 
 ### Device-specific configuration
@@ -209,8 +209,8 @@ const cap = await checkCapability();
 
 const client = createClient({
   local: mlc({
-    model: cap.grade === 'S' ? 'Llama-3.1-8B-Instruct-q4f16_1-MLC' :
-           cap.grade === 'A' ? 'Phi-3.5-mini-instruct-q4f16_1-MLC' :
+    model: cap.grade === 'S' ? 'Qwen3-8B-q4f16_1-MLC' :
+           cap.grade === 'A' ? 'Qwen2.5-3B-Instruct-q4f16_1-MLC' :
            'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
     useCache: cap.grade !== 'C',  // Disable cache on low-end
     useWebWorker: true
@@ -236,8 +236,8 @@ const client = createClient({
 The `mlc()` provider works with MLC-compiled models from the [@mlc-ai/web-llm](https://github.com/mlc-ai/web-llm) library.
 
 **Common models:**
-- `Llama-3.1-8B-Instruct-q4f16_1-MLC` (requires ~4.5GB VRAM)
-- `Phi-3.5-mini-instruct-q4f16_1-MLC` (requires ~2GB VRAM)
+- `Qwen3-8B-q4f16_1-MLC` (requires ~4.5GB VRAM)
+- `Qwen2.5-3B-Instruct-q4f16_1-MLC` (requires ~2GB VRAM)
 - `Qwen2.5-1.5B-Instruct-q4f16_1-MLC` (requires ~1GB VRAM)
 
 For a full list of available models, see the [MLC Web LLM model library](https://github.com/mlc-ai/web-llm/blob/main/src/config.ts).

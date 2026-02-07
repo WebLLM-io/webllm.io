@@ -165,9 +165,9 @@ async function initializeWithWarning() {
 
 function getModelForGrade(grade: string): string {
   const models = {
-    'S': 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-    'A': 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-    'B': 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+    'S': 'Qwen3-8B-q4f16_1-MLC',
+    'A': 'Qwen3-8B-q4f16_1-MLC',
+    'B': 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
     'C': 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
   };
   return models[grade] || models['C'];
@@ -273,7 +273,7 @@ async function smartInitialize() {
   console.log(`GPU: ${capability.gpu.vendor}`);
 
   // Step 3: Check cache status
-  const modelId = 'Llama-3.1-8B-Instruct-q4f16_1-MLC';
+  const modelId = 'Qwen3-8B-q4f16_1-MLC';
   const cached = await hasModelInCache(modelId);
 
   if (!cached) {

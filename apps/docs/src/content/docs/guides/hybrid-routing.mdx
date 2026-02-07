@@ -44,8 +44,8 @@ The SDK decides which backend to use based on:
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',         // S/A grade
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',        // B grade
+      high: 'Qwen3-8B-q4f16_1-MLC',         // S/A grade
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',        // B grade
       low: null  // C grade devices fall back to cloud
     }
   },
@@ -65,7 +65,7 @@ During model download, the cloud API serves requests immediately:
 
 ```typescript
 const client = createClient({
-  local: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
+  local: 'Qwen3-8B-q4f16_1-MLC',
   cloud: {
     baseURL: 'https://api.openai.com/v1',
     apiKey: process.env.OPENAI_API_KEY,
@@ -88,7 +88,7 @@ console.log('Backend:', completion1.model);  // 'gpt-4o-mini'
 const completion2 = await client.chat.completions.create({
   messages: [{ role: 'user', content: 'Second message' }]
 });
-console.log('Backend:', completion2.model);  // 'Llama-3.1-8B-Instruct-q4f16_1-MLC'
+console.log('Backend:', completion2.model);  // 'Qwen3-8B-q4f16_1-MLC'
 ```
 
 This provides instant responsiveness while still leveraging local inference once available.
@@ -188,8 +188,8 @@ Use local inference by default and cloud as a fallback to minimize API costs:
 const client = createClient({
   local: {
     tiers: {
-      high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',         // S/A grade
-      medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',        // B grade
+      high: 'Qwen3-8B-q4f16_1-MLC',         // S/A grade
+      medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',        // B grade
       low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'           // C grade — still local
     }
   },
