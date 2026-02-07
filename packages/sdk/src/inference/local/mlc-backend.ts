@@ -11,8 +11,8 @@ import { WebLLMError } from '../../core/errors.js';
 import { RequestQueue } from '../queue.js';
 
 const RECOMMENDED_MODELS = {
-  high: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
-  medium: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
+  high: 'Qwen3-8B-q4f16_1-MLC',
+  medium: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
   low: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
 } as const;
 
