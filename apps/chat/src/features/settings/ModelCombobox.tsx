@@ -174,12 +174,12 @@ export function ModelCombobox() {
           onFocus={open}
           onKeyDown={handleKeyDown}
           placeholder="Leave empty for auto"
-          className="flex-1 bg-zinc-800 border border-zinc-700 rounded-l-md px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-zinc-500"
+          className="flex-1 bg-bg-input border border-border-subtle rounded-l-md px-3 py-1.5 text-sm text-text placeholder-text-muted outline-none focus:border-text-muted"
         />
         <button
           type="button"
           onClick={() => isOpen ? close() : open()}
-          className="px-2 bg-zinc-800 border border-l-0 border-zinc-700 rounded-r-md text-zinc-400 hover:text-zinc-200"
+          className="px-2 bg-bg-input border border-l-0 border-border-subtle rounded-r-md text-text-muted hover:text-text"
           tabIndex={-1}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -188,9 +188,9 @@ export function ModelCombobox() {
         </button>
       </div>
 
-      <div className="flex justify-between mt-1 text-[10px] text-zinc-500">
+      <div className="flex justify-between mt-1 text-[10px] text-text-muted">
         <span>{options.length} models available</span>
-        <a href="https://github.com/mlc-ai/web-llm/blob/main/src/config.ts" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-300">
+        <a href="https://github.com/mlc-ai/web-llm/blob/main/src/config.ts" target="_blank" rel="noopener noreferrer" className="hover:text-text-secondary">
           Browse on GitHub &rarr;
         </a>
       </div>
@@ -198,10 +198,10 @@ export function ModelCombobox() {
       {isOpen && (
         <ul
           ref={listRef}
-          className="absolute z-50 w-full mt-1 max-h-64 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-md shadow-lg"
+          className="absolute z-50 w-full mt-1 max-h-64 overflow-y-auto bg-bg-surface border border-border-subtle rounded-md shadow-lg"
         >
           {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-zinc-500">No matching models</li>
+            <li className="px-3 py-2 text-xs text-text-muted">No matching models</li>
           ) : (
             filtered.map((opt, idx) => (
               <li
@@ -209,16 +209,16 @@ export function ModelCombobox() {
                 onClick={() => select(opt.model_id)}
                 onMouseEnter={() => setHighlightedIdx(idx)}
                 className={`px-3 py-1.5 cursor-pointer text-sm flex items-center justify-between gap-2 ${
-                  idx === highlightedIdx ? 'bg-zinc-700' : 'hover:bg-zinc-700/50'
-                } ${opt.model_id === localModel ? 'text-blue-400' : 'text-zinc-300'}`}
+                  idx === highlightedIdx ? 'bg-bg-surface-hover' : 'hover:bg-bg-surface-hover/50'
+                } ${opt.model_id === localModel ? 'text-blue-500 dark:text-blue-400' : 'text-text-secondary'}`}
               >
                 <span
                   className="truncate"
                   dangerouslySetInnerHTML={{ __html: highlightMatch(opt.model_id, localModel) }}
                 />
                 <span className="flex gap-1 shrink-0">
-                  {opt.cached && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">Downloaded</span>}
-                  {opt.recommended && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-400">Recommended</span>}
+                  {opt.cached && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">Downloaded</span>}
+                  {opt.recommended && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">Recommended</span>}
                 </span>
               </li>
             ))

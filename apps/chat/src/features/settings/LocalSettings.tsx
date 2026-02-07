@@ -9,15 +9,15 @@ export function LocalSettings() {
 
   return (
     <div className="space-y-3">
-      <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Local Config</div>
+      <div className="text-xs font-medium text-text-muted uppercase tracking-wider">Local Config</div>
 
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Model ID</label>
+        <label className="block text-xs text-text-muted mb-1">Model ID</label>
         <ModelCombobox />
       </div>
 
       <label className="flex items-center justify-between">
-        <span className="text-xs text-zinc-400">WebWorker</span>
+        <span className="text-xs text-text-muted">WebWorker</span>
         <input
           type="checkbox"
           checked={localWebWorker}
@@ -27,7 +27,7 @@ export function LocalSettings() {
       </label>
 
       <label className="flex items-center justify-between">
-        <span className="text-xs text-zinc-400">OPFS Cache</span>
+        <span className="text-xs text-text-muted">OPFS Cache</span>
         <input
           type="checkbox"
           checked={localCache}

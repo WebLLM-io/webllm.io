@@ -22,10 +22,10 @@ export function SettingsPanel({ onApply }: Props) {
   };
 
   return (
-    <div className="border-t border-zinc-800">
+    <div className="border-t border-border">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+        className="flex items-center justify-between w-full px-4 py-2 text-xs text-text-muted hover:text-text transition-colors"
       >
         <span className="font-medium">Settings</span>
         <svg

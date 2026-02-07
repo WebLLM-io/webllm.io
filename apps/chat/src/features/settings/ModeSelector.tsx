@@ -12,7 +12,7 @@ export function ModeSelector() {
   const setMode = useStore((s) => s.setMode);
 
   return (
-    <div className="flex bg-zinc-800 rounded-lg p-0.5">
+    <div className="flex bg-bg-surface rounded-lg p-0.5">
       {modes.map((m) => (
         <button
           key={m.value}
@@ -20,8 +20,8 @@ export function ModeSelector() {
           className={cn(
             'flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
             mode === m.value
-              ? 'bg-zinc-700 text-zinc-100'
-              : 'text-zinc-400 hover:text-zinc-200',
+              ? 'bg-bg-surface-hover text-text'
+              : 'text-text-muted hover:text-text',
           )}
         >
           {m.label}

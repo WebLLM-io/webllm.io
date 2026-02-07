@@ -12,14 +12,14 @@ export function CloudSettings() {
   const cloudRetries = useStore((s) => s.cloudRetries);
   const setCloudRetries = useStore((s) => s.setCloudRetries);
 
-  const inputClass = 'w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 outline-none focus:border-zinc-500';
+  const inputClass = 'w-full bg-bg-input border border-border-subtle rounded-md px-3 py-1.5 text-sm text-text placeholder-text-muted outline-none focus:border-text-muted';
 
   return (
     <div className="space-y-3">
-      <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Cloud Config</div>
+      <div className="text-xs font-medium text-text-muted uppercase tracking-wider">Cloud Config</div>
 
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Base URL</label>
+        <label className="block text-xs text-text-muted mb-1">Base URL</label>
         <input
           type="text"
           value={cloudBaseURL}
@@ -30,7 +30,7 @@ export function CloudSettings() {
       </div>
 
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">API Key</label>
+        <label className="block text-xs text-text-muted mb-1">API Key</label>
         <input
           type="password"
           value={cloudApiKey}
@@ -41,7 +41,7 @@ export function CloudSettings() {
       </div>
 
       <div>
-        <label className="block text-xs text-zinc-400 mb-1">Model Name</label>
+        <label className="block text-xs text-text-muted mb-1">Model Name</label>
         <input
           type="text"
           value={cloudModel}
@@ -53,7 +53,7 @@ export function CloudSettings() {
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-xs text-zinc-400 mb-1">Timeout (ms)</label>
+          <label className="block text-xs text-text-muted mb-1">Timeout (ms)</label>
           <input
             type="number"
             value={cloudTimeout}
@@ -63,7 +63,7 @@ export function CloudSettings() {
           />
         </div>
         <div className="flex-1">
-          <label className="block text-xs text-zinc-400 mb-1">Retries</label>
+          <label className="block text-xs text-text-muted mb-1">Retries</label>
           <input
             type="number"
             value={cloudRetries}
