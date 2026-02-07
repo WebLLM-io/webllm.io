@@ -32,13 +32,13 @@ export function ChatPanel({ conversationId }: Props) {
   });
   const [thinkingState, setThinkingState] = useState({ text: '', isThinking: false, time: null as number | null });
 
-  // Cleanup on unmount: abort in-flight request + cancel RAF
+  // Cleanup on unmount: abort in-flight request
+  // (useStreamRenderer handles its own RAF cleanup via internal useEffect)
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      renderer.cancel();
     };
-  }, [renderer]);
+  }, []);
 
   const handleAbort = useCallback(() => {
     abortRef.current?.abort();
