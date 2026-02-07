@@ -668,11 +668,7 @@ function addMessage(role: 'user' | 'assistant', content: string) {
 
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  if (role === 'user') {
-    contentDiv.textContent = content;
-  } else {
-    contentDiv.innerHTML = renderMarkdown(content);
-  }
+  contentDiv.innerHTML = renderMarkdown(content);
 
   msgDiv.appendChild(contentDiv);
   messagesDiv.appendChild(msgDiv);

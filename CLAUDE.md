@@ -187,7 +187,7 @@ Assistant messages are rendered as Markdown with syntax highlighting:
 - **Code highlighting** — `highlight.js` with 15 registered languages (JS, TS, Python, Bash, JSON, CSS, HTML/XML, Java, C/C++, Rust, Go, SQL, YAML)
 - **Code blocks** — Wrapped in `.code-block-wrapper` with language label and Copy button; event-delegated click handler on `#messages`
 - **Stream rendering** — `createStreamRenderer()` uses `requestAnimationFrame` throttling; `update()` queues re-renders, `finalize()` does immediate final render
-- **User messages** — Rendered as plain text (`textContent`) with `white-space: pre-wrap`
+- **User messages** — Also rendered as Markdown with adapted styles for blue background (semi-transparent inline code, table borders, links)
 - **Thinking content** — Kept as plain text; only the answer portion gets Markdown rendering
 
 ## Conventions
