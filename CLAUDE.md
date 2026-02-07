@@ -178,6 +178,18 @@ The playground supports thinking/reasoning models that expose their chain-of-tho
 - **Graceful abort** — Interrupting during thinking finalizes the timing display and appends "[Interrupted]"
 - **No-op for regular models** — Models without thinking content render identically to before (no `<details>` element created)
 
+#### Markdown Rendering
+
+Assistant messages are rendered as Markdown with syntax highlighting:
+
+- **Parser** — `marked` (GFM enabled) with `marked-highlight` extension for code highlighting
+- **XSS protection** — `DOMPurify` sanitizes all HTML output; links get `target="_blank" rel="noopener noreferrer"`
+- **Code highlighting** — `highlight.js` with 15 registered languages (JS, TS, Python, Bash, JSON, CSS, HTML/XML, Java, C/C++, Rust, Go, SQL, YAML)
+- **Code blocks** — Wrapped in `.code-block-wrapper` with language label and Copy button; event-delegated click handler on `#messages`
+- **Stream rendering** — `createStreamRenderer()` uses `requestAnimationFrame` throttling; `update()` queues re-renders, `finalize()` does immediate final render
+- **User messages** — Rendered as plain text (`textContent`) with `white-space: pre-wrap`
+- **Thinking content** — Kept as plain text; only the answer portion gets Markdown rendering
+
 ## Conventions
 
 - Build tool: tsup (ESM/CJS dual output + DTS)
