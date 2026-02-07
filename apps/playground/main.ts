@@ -1,6 +1,8 @@
 import { createClient, checkCapability, hasModelInCache } from '@webllm-io/sdk';
 import type { WebLLMClient, ChatCompletionChunk, Message } from '@webllm-io/sdk';
 import { prebuiltAppConfig } from '@mlc-ai/web-llm';
+import 'highlight.js/styles/github-dark.css';
+import { renderMarkdown, initCodeCopyHandler, createStreamRenderer } from './markdown';
 
 // --- Types ---
 interface ModelOption {
@@ -107,6 +109,9 @@ const messagesDiv = document.getElementById('messages')!;
 const userInput = document.getElementById('user-input') as HTMLTextAreaElement;
 const sendBtn = document.getElementById('send-btn') as HTMLButtonElement;
 const abortBtn = document.getElementById('abort-btn') as HTMLButtonElement;
+
+// --- Markdown Code Copy Handler ---
+initCodeCopyHandler(messagesDiv);
 
 // --- State ---
 let client: WebLLMClient | null = null;
@@ -663,7 +668,11 @@ function addMessage(role: 'user' | 'assistant', content: string) {
 
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
-  contentDiv.textContent = content;
+  if (role === 'user') {
+    contentDiv.textContent = content;
+  } else {
+    contentDiv.innerHTML = renderMarkdown(content);
+  }
 
   msgDiv.appendChild(contentDiv);
   messagesDiv.appendChild(msgDiv);
@@ -801,6 +810,9 @@ async function handleSend(retryText?: string) {
   let thinkingContentEl: HTMLDivElement | null = null;
   let answerEl: HTMLDivElement | null = null;
 
+  // Stream markdown renderer (created lazily on first answer chunk)
+  let answerRenderer: ReturnType<typeof createStreamRenderer> | null = null;
+
   function ensureThinkingDOM() {
     if (thinkingDetails) return;
     contentDiv.innerHTML = '';
@@ -871,14 +883,16 @@ async function handleSend(retryText?: string) {
         thinkingContentEl!.textContent = parsed.thinking;
         thinkingContentEl!.scrollTop = thinkingContentEl!.scrollHeight;
         if (parsed.answer) {
-          answerEl!.textContent = parsed.answer;
+          if (!answerRenderer) answerRenderer = createStreamRenderer(answerEl!);
+          answerRenderer.update(parsed.answer);
         }
         if (!parsed.isThinking) {
           finalizeThinking();
         }
       } else {
-        // No thinking content — plain text rendering
-        contentDiv.textContent = parsed.answer;
+        // No thinking content — markdown stream rendering
+        if (!answerRenderer) answerRenderer = createStreamRenderer(contentDiv);
+        answerRenderer.update(parsed.answer);
       }
 
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -888,6 +902,12 @@ async function handleSend(retryText?: string) {
     // Finalize thinking if stream ended while still thinking
     if (thinkingDetails && thinkingSummary && thinkingDetails.open) {
       finalizeThinking();
+    }
+
+    // Final markdown render (ensures complete output even if rAF was pending)
+    if (answerRenderer) {
+      const finalParsed = parseThinkingContent(rawContent, reasoningFromAPI);
+      answerRenderer.finalize(finalParsed.answer);
     }
 
     // Accumulate token usage
@@ -936,13 +956,15 @@ async function handleSend(retryText?: string) {
         finalizeThinking();
       }
       const parsed = parseThinkingContent(rawContent, reasoningFromAPI);
-      if (thinkingDetails) {
-        // Structured DOM already exists; append interrupted marker to answer
+      if (answerRenderer) {
+        answerRenderer.finalize((parsed.answer || rawContent) + ' [Interrupted]');
+      } else if (thinkingDetails) {
         answerEl!.textContent = (parsed.answer || '') + ' [Interrupted]';
       } else {
         contentDiv.textContent = (parsed.answer || rawContent) + ' [Interrupted]';
       }
     } else {
+      answerRenderer?.cancel();
       const lastUserText = text;
       renderChatError(container, contentDiv, err.message, () => {
         handleSend(lastUserText);

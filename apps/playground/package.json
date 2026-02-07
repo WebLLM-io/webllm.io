@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "@webllm-io/sdk": "workspace:*",
-    "@mlc-ai/web-llm": "^0.2.80"
+    "@mlc-ai/web-llm": "^0.2.80",
+    "marked": "^15",
+    "marked-highlight": "^2",
+    "dompurify": "^3",
+    "highlight.js": "^11"
   },
   "devDependencies": {
     "vite": "^6",
