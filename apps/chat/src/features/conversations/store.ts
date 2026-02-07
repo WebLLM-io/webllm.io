@@ -11,6 +11,7 @@ export interface ConversationsSlice {
   deleteConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
   addMessage: (conversationId: string, message: ChatMessage) => void;
+  deleteMessagesFrom: (conversationId: string, messageIndex: number) => void;
   _hydrate: () => Promise<void>;
   _persist: () => void;
 }
@@ -70,6 +71,16 @@ export const createConversationsSlice: StateCreator<ConversationsSlice, [], [], 
           ? message.content.slice(0, 50) + (message.content.length > 50 ? '...' : '')
           : c.title;
         return { ...c, messages, title, updatedAt: Date.now() };
+      }),
+    }));
+    get()._persist();
+  },
+
+  deleteMessagesFrom: (conversationId, messageIndex) => {
+    set((state) => ({
+      conversations: state.conversations.map((c) => {
+        if (c.id !== conversationId) return c;
+        return { ...c, messages: c.messages.slice(0, messageIndex), updatedAt: Date.now() };
       }),
     }));
     get()._persist();
