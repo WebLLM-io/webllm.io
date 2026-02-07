@@ -35,7 +35,10 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
   cloudTimeout: '',
   cloudRetries: '',
 
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) => {
+    set({ mode });
+    get().persistSettings();
+  },
   setLocalModel: (localModel) => set({ localModel }),
   setLocalWebWorker: (localWebWorker) => set({ localWebWorker }),
   setLocalCache: (localCache) => set({ localCache }),

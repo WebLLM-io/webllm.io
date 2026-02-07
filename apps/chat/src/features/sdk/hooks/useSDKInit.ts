@@ -59,6 +59,7 @@ export function useSDKInit() {
     try {
       const client = createClient(opts);
       setClient(client);
+      setLoadProgress(null);
       setPipelineStatus(opts.local ? 'initializing' : 'idle');
       setErrorMessage(null);
     } catch (err) {
