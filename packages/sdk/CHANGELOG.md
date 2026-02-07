@@ -1,5 +1,11 @@
 # @webllm-io/sdk
 
+## 1.2.0
+
+### Minor Changes
+
+- Add optional `reasoning_content` field to `ChatCompletionChunkDelta` for thinking/reasoning model support (DeepSeek R1, QwQ, OpenAI o1/o3)
+
 ## 1.1.1
 
 ### Patch Changes
