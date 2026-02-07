@@ -38,6 +38,7 @@ export interface ChatCompletion {
 export interface ChatCompletionChunkDelta {
   role?: 'assistant';
   content?: string;
+  reasoning_content?: string;
 }
 
 export interface ChatCompletionChunkChoice {
