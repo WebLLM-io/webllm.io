@@ -1,15 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useStore } from '../../store';
 
 interface Props {
   onSend: (text: string) => void;
+  isStreaming: boolean;
+  onAbort: () => void;
 }
 
-export function ChatInput({ onSend }: Props) {
+export function ChatInput({ onSend, isStreaming, onAbort }: Props) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const isStreaming = useStore((s) => s.isStreaming);
-  const abort = useStore((s) => s.abortController);
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -39,10 +38,6 @@ export function ChatInput({ onSend }: Props) {
     }
   };
 
-  const handleAbort = () => {
-    abort?.abort();
-  };
-
   return (
     <div className="border-t border-zinc-800 px-4 py-3">
       <div className="max-w-3xl mx-auto">
@@ -60,7 +55,7 @@ export function ChatInput({ onSend }: Props) {
           <div className="flex items-center gap-1">
             {isStreaming ? (
               <button
-                onClick={handleAbort}
+                onClick={onAbort}
                 className="p-1.5 text-zinc-400 hover:text-red-400 transition-colors"
                 title="Stop"
               >

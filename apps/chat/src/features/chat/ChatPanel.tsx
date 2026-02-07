@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore } from '../../store';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
@@ -7,7 +7,6 @@ import { ThinkingSection } from './ThinkingSection';
 import { ChatError } from './ChatError';
 import { useChat } from './hooks/useChat';
 import { useStreamRenderer } from './hooks/useStreamRenderer';
-import { renderMarkdown } from '../../shared/markdown';
 
 interface Props {
   conversationId: string;
@@ -18,28 +17,49 @@ export function ChatPanel({ conversationId }: Props) {
   const conversation = conversations.find((c) => c.id === conversationId);
   const messages = conversation?.messages ?? [];
 
-  const { sendMessage, abort } = useChat();
+  const { sendMessage } = useChat();
   const renderer = useStreamRenderer();
 
+  const [isStreaming, setIsStreaming] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [streamingEl, setStreamingEl] = useState<React.ReactNode>(null);
   const [error, setError] = useState<{ message: string; text: string } | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
   const answerRef = useRef<HTMLDivElement>(null);
   const thinkingRef = useRef<{ text: string; isThinking: boolean; startTime: number | null }>({
     text: '', isThinking: false, startTime: null,
   });
   const [thinkingState, setThinkingState] = useState({ text: '', isThinking: false, time: null as number | null });
 
+  // Cleanup on unmount: abort in-flight request + cancel RAF
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      renderer.cancel();
+    };
+  }, [renderer]);
+
+  const handleAbort = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const handleSend = useCallback((text: string) => {
+    // Abort any existing request
+    abortRef.current?.abort();
+
     setError(null);
     setIsWaiting(true);
+    setIsStreaming(true);
     setStreamingEl(null);
     thinkingRef.current = { text: '', isThinking: false, startTime: null };
     setThinkingState({ text: '', isThinking: false, time: null });
     renderer.reset();
 
-    sendMessage(text, conversationId, {
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    sendMessage(text, conversationId, controller.signal, {
       onFirstChunk: () => {
         setIsWaiting(false);
         setStreamingEl(
@@ -71,10 +91,10 @@ export function ChatPanel({ conversationId }: Props) {
             </div>
           </div>,
         );
-        // Re-set target since the element might be recreated
-        setTimeout(() => {
+        // Re-set target after React re-renders the element
+        queueMicrotask(() => {
           if (answerRef.current) renderer.setTarget(answerRef.current);
-        }, 0);
+        });
       },
       onAnswer: (answer) => {
         renderer.update(answer);
@@ -91,8 +111,10 @@ export function ChatPanel({ conversationId }: Props) {
         renderer.finalize(partialAnswer + ' [Interrupted]');
       },
       onDone: () => {
+        setIsStreaming(false);
         setIsWaiting(false);
         setStreamingEl(null);
+        abortRef.current = null;
       },
     });
   }, [conversationId, sendMessage, renderer]);
@@ -122,7 +144,7 @@ export function ChatPanel({ conversationId }: Props) {
           </div>
         )}
       </MessageList>
-      <ChatInput onSend={handleSend} />
+      <ChatInput onSend={handleSend} isStreaming={isStreaming} onAbort={handleAbort} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { renderMarkdown } from '../../../shared/markdown';
 
 export function useStreamRenderer() {
@@ -51,6 +51,8 @@ export function useStreamRenderer() {
     currentText.current = '';
     rafId.current = null;
   }, []);
+
+  useEffect(() => () => cancel(), [cancel]);
 
   return { setTarget, update, finalize, cancel, reset };
 }
