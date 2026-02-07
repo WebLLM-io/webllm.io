@@ -64,7 +64,7 @@ export function ChatPanel({ conversationId }: Props) {
         setIsWaiting(false);
         setStreamingEl(
           <div className="flex justify-start">
-            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-zinc-800 text-zinc-100">
+            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface text-text">
               <div ref={answerRef} className="markdown-content" />
             </div>
           </div>,
@@ -85,7 +85,7 @@ export function ChatPanel({ conversationId }: Props) {
 
         setStreamingEl(
           <div className="flex justify-start">
-            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-zinc-800 text-zinc-100">
+            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface text-text">
               <ThinkingSection thinking={thinking} isThinking={isThinking} thinkingTime={elapsed} />
               <div ref={answerRef} className="markdown-content" />
             </div>
@@ -134,7 +134,7 @@ export function ChatPanel({ conversationId }: Props) {
       <MessageList messages={messages}>
         {isWaiting && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-zinc-800">
+            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface">
               <TypingIndicator />
             </div>
           </div>

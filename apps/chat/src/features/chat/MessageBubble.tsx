@@ -17,7 +17,7 @@ export function MessageBubble({ message }: Props) {
           'max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3',
           isUser
             ? 'bg-blue-600 text-white'
-            : 'bg-zinc-800 text-zinc-100',
+            : 'bg-bg-surface text-text',
         )}
       >
         {!isUser && message.thinking && (
@@ -35,12 +35,12 @@ export function MessageBubble({ message }: Props) {
         {!isUser && (message.model || message.route) && (
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             {message.model && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-badge text-text-badge">
                 {message.model}
               </span>
             )}
             {message.route && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400 flex items-center gap-1">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-badge text-text-badge flex items-center gap-1">
                 {message.route === 'local' ? (
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="2" y="3" width="20" height="14" rx="2" />
