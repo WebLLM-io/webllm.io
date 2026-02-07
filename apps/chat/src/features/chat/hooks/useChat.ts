@@ -14,6 +14,7 @@ interface SendOptions {
   onError: (error: Error) => void;
   onAbort: (partialAnswer: string) => void;
   onDone: () => void;
+  getThinkingTime: () => number | null;
 }
 
 export function useChat() {
@@ -103,11 +104,13 @@ export function useChat() {
         }
 
         // Save assistant message
+        const thinkingTime = opts.getThinkingTime();
         const assistantMsg: ChatMessage = {
           id: nanoid(),
           role: 'assistant',
           content: finalParsed.answer,
           thinking: finalParsed.thinking || undefined,
+          thinkingTime: thinkingTime ?? undefined,
           model: modelName || undefined,
           route: routeDecision || undefined,
           usage: lastChunk?.usage
@@ -124,11 +127,13 @@ export function useChat() {
           // Save partial response
           if (rawContent || reasoningFromAPI) {
             const parsed2 = parseThinkingContent(rawContent, reasoningFromAPI);
+            const abortThinkingTime = opts.getThinkingTime();
             const assistantMsg: ChatMessage = {
               id: nanoid(),
               role: 'assistant',
               content: (parsed2.answer || rawContent) + ' [Interrupted]',
               thinking: parsed2.thinking || undefined,
+              thinkingTime: abortThinkingTime ?? undefined,
               model: modelName || undefined,
               route: useStore.getState().lastRouteDecision || undefined,
               createdAt: Date.now(),

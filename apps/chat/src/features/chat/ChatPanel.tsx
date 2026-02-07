@@ -116,6 +116,10 @@ export function ChatPanel({ conversationId }: Props) {
         setStreamingEl(null);
         abortRef.current = null;
       },
+      getThinkingTime: () => {
+        if (!thinkingRef.current.startTime) return null;
+        return Date.now() - thinkingRef.current.startTime;
+      },
     });
   }, [conversationId, sendMessage, renderer]);
 

@@ -3,6 +3,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   thinking?: string;
+  thinkingTime?: number;
   model?: string;
   route?: 'local' | 'cloud';
   usage?: { prompt_tokens: number; completion_tokens: number };

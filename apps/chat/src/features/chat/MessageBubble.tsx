@@ -24,7 +24,7 @@ export function MessageBubble({ message }: Props) {
           <ThinkingSection
             thinking={message.thinking}
             isThinking={false}
-            thinkingTime={null}
+            thinkingTime={message.thinkingTime ?? null}
           />
         )}
 
