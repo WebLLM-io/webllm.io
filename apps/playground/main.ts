@@ -316,6 +316,10 @@ function isQwenModel(modelId: string): boolean {
   return /qwen/i.test(modelId);
 }
 
+function isQwenBrand(modelId: string): boolean {
+  return /^qwen/i.test(modelId);
+}
+
 function sortModelOptions() {
   modelOptions.sort((a, b) => {
     // Cached models first
@@ -326,6 +330,12 @@ function sortModelOptions() {
     const aQwen = isQwenModel(a.model_id);
     const bQwen = isQwenModel(b.model_id);
     if (aQwen !== bQwen) return aQwen ? -1 : 1;
+    // Within Qwen tier: Qwen-branded first, then Qwen-distilled (e.g. DeepSeek-R1-Distill-Qwen)
+    if (aQwen && bQwen) {
+      const aBrand = isQwenBrand(a.model_id);
+      const bBrand = isQwenBrand(b.model_id);
+      if (aBrand !== bBrand) return aBrand ? -1 : 1;
+    }
     // Then alphabetically
     return a.model_id.localeCompare(b.model_id);
   });
