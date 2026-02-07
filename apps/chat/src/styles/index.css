@@ -1,13 +1,131 @@
 @import "tailwindcss";
-@import "highlight.js/styles/github-dark.css";
+@import "./hljs-themes.css";
 
-@theme {
+@theme inline {
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Background tokens */
+  --color-bg-page: var(--th-bg-page);
+  --color-bg-sidebar: var(--th-bg-sidebar);
+  --color-bg-surface: var(--th-bg-surface);
+  --color-bg-surface-hover: var(--th-bg-surface-hover);
+  --color-bg-input: var(--th-bg-input);
+  --color-bg-overlay: var(--th-bg-overlay);
+  --color-bg-code: var(--th-bg-code);
+  --color-bg-codeblock: var(--th-bg-codeblock);
+  --color-bg-codeblock-header: var(--th-bg-codeblock-header);
+  --color-bg-thinking: var(--th-bg-thinking);
+  --color-bg-error: var(--th-bg-error);
+  --color-bg-badge: var(--th-bg-badge);
+
+  /* Border tokens */
+  --color-border: var(--th-border);
+  --color-border-subtle: var(--th-border-subtle);
+  --color-border-thinking: var(--th-border-thinking);
+  --color-border-error: var(--th-border-error);
+
+  /* Text tokens */
+  --color-text: var(--th-text);
+  --color-text-secondary: var(--th-text-secondary);
+  --color-text-muted: var(--th-text-muted);
+  --color-text-faint: var(--th-text-faint);
+  --color-text-link: var(--th-text-link);
+  --color-text-link-hover: var(--th-text-link-hover);
+  --color-text-thinking: var(--th-text-thinking);
+  --color-text-error: var(--th-text-error);
+  --color-text-badge: var(--th-text-badge);
+
+  /* Status tokens */
+  --color-status-success: var(--th-status-success);
+  --color-status-warning: var(--th-status-warning);
+  --color-status-error: var(--th-status-error);
+  --color-status-info: var(--th-status-info);
+
+  /* Scrollbar tokens */
+  --color-scrollbar: var(--th-scrollbar);
+  --color-scrollbar-hover: var(--th-scrollbar-hover);
+
+  /* Typing dot token */
+  --color-typing-dot: var(--th-typing-dot);
+}
+
+/* Light theme (default) */
+:root {
+  color-scheme: light;
+  --th-bg-page: #ffffff;
+  --th-bg-sidebar: #f9fafb;
+  --th-bg-surface: #f3f4f6;
+  --th-bg-surface-hover: #e5e7eb;
+  --th-bg-input: #ffffff;
+  --th-bg-overlay: rgba(0, 0, 0, 0.2);
+  --th-bg-code: #f3f4f6;
+  --th-bg-codeblock: #f9fafb;
+  --th-bg-codeblock-header: #f3f4f6;
+  --th-bg-thinking: rgba(239, 246, 255, 0.6);
+  --th-bg-error: rgba(254, 242, 242, 0.6);
+  --th-bg-badge: #e5e7eb;
+  --th-border: #e5e7eb;
+  --th-border-subtle: #d1d5db;
+  --th-border-thinking: rgba(191, 219, 254, 0.4);
+  --th-border-error: rgba(254, 202, 202, 0.4);
+  --th-text: #111827;
+  --th-text-secondary: #374151;
+  --th-text-muted: #6b7280;
+  --th-text-faint: #9ca3af;
+  --th-text-link: #2563eb;
+  --th-text-link-hover: #1d4ed8;
+  --th-text-thinking: #2563eb;
+  --th-text-error: #dc2626;
+  --th-text-badge: #4b5563;
+  --th-scrollbar: rgba(156, 163, 175, 0.3);
+  --th-scrollbar-hover: rgba(156, 163, 175, 0.5);
+  --th-typing-dot: rgb(107, 114, 128);
+  --th-status-success: #16a34a;
+  --th-status-warning: #ca8a04;
+  --th-status-error: #dc2626;
+  --th-status-info: #2563eb;
+}
+
+/* Dark theme */
+.dark {
+  color-scheme: dark;
+  --th-bg-page: #09090b;
+  --th-bg-sidebar: #18181b;
+  --th-bg-surface: #27272a;
+  --th-bg-surface-hover: #3f3f46;
+  --th-bg-input: #27272a;
+  --th-bg-overlay: rgba(0, 0, 0, 0.5);
+  --th-bg-code: #27272a;
+  --th-bg-codeblock: #18181b;
+  --th-bg-codeblock-header: rgba(39, 39, 42, 0.5);
+  --th-bg-thinking: rgba(23, 37, 84, 0.3);
+  --th-bg-error: rgba(69, 10, 10, 0.3);
+  --th-bg-badge: #3f3f46;
+  --th-border: #27272a;
+  --th-border-subtle: #3f3f46;
+  --th-border-thinking: rgba(30, 58, 138, 0.3);
+  --th-border-error: rgba(127, 29, 29, 0.3);
+  --th-text: #f4f4f5;
+  --th-text-secondary: #d4d4d8;
+  --th-text-muted: #a1a1aa;
+  --th-text-faint: #52525b;
+  --th-text-link: #60a5fa;
+  --th-text-link-hover: #93c5fd;
+  --th-text-thinking: #93c5fd;
+  --th-text-error: #fca5a5;
+  --th-text-badge: #a1a1aa;
+  --th-scrollbar: rgba(63, 63, 70, 0.5);
+  --th-scrollbar-hover: rgba(63, 63, 70, 0.8);
+  --th-typing-dot: rgb(161, 161, 170);
+  --th-status-success: #4ade80;
+  --th-status-warning: #facc15;
+  --th-status-error: #f87171;
+  --th-status-info: #60a5fa;
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 font-sans antialiased;
+  @apply bg-bg-page text-text font-sans antialiased;
   margin: 0;
 }
 
@@ -26,12 +144,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(63 63 70 / 0.5);
+  background: var(--th-scrollbar);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(63 63 70 / 0.8);
+  background: var(--th-scrollbar-hover);
 }
 
 /* Typing indicator */
@@ -44,7 +162,7 @@ body {
 .typing-indicator span {
   width: 6px;
   height: 6px;
-  background: rgb(161 161 170);
+  background: var(--th-typing-dot);
   border-radius: 50%;
   animation: typing-bounce 1.4s ease-in-out infinite;
 }
@@ -64,11 +182,11 @@ body {
 
 /* Code block styling */
 .code-block-wrapper {
-  @apply rounded-lg overflow-hidden my-3 bg-zinc-900 border border-zinc-800;
+  @apply rounded-lg overflow-hidden my-3 bg-bg-codeblock border border-border;
 }
 
 .code-block-header {
-  @apply flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 text-xs text-zinc-400;
+  @apply flex items-center justify-between px-3 py-1.5 bg-bg-codeblock-header text-xs text-text-muted;
 }
 
 .code-lang {
@@ -76,7 +194,7 @@ body {
 }
 
 .code-copy-btn {
-  @apply text-xs text-zinc-400 hover:text-zinc-200 bg-transparent border-0 cursor-pointer px-2 py-0.5 rounded transition-colors;
+  @apply text-xs text-text-muted hover:text-text bg-transparent border-0 cursor-pointer px-2 py-0.5 rounded transition-colors;
 }
 
 .code-block-wrapper pre {
@@ -125,11 +243,11 @@ body {
 }
 
 .markdown-content blockquote {
-  @apply border-l-2 border-zinc-600 pl-3 my-2 text-zinc-400 italic;
+  @apply border-l-2 border-border-subtle pl-3 my-2 text-text-muted italic;
 }
 
 .markdown-content a {
-  @apply text-blue-400 hover:text-blue-300 underline;
+  @apply text-text-link hover:text-text-link-hover underline;
 }
 
 .markdown-content table {
@@ -137,19 +255,19 @@ body {
 }
 
 .markdown-content th, .markdown-content td {
-  @apply border border-zinc-700 px-3 py-1.5 text-left text-sm;
+  @apply border border-border-subtle px-3 py-1.5 text-left text-sm;
 }
 
 .markdown-content th {
-  @apply bg-zinc-800/50 font-medium;
+  @apply bg-bg-codeblock-header font-medium;
 }
 
 .markdown-content code:not(pre code) {
-  @apply bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded text-xs font-mono;
+  @apply bg-bg-code text-text-secondary px-1.5 py-0.5 rounded text-xs font-mono;
 }
 
 .markdown-content hr {
-  @apply border-zinc-800 my-4;
+  @apply border-border my-4;
 }
 
 /* User message markdown overrides */
@@ -168,15 +286,20 @@ body {
 
 /* Thinking section */
 .thinking-section {
-  @apply bg-blue-950/30 border border-blue-900/30 rounded-lg mb-3 overflow-hidden;
+  @apply bg-bg-thinking border border-border-thinking rounded-lg mb-3 overflow-hidden;
 }
 
 .thinking-section summary {
-  @apply px-3 py-2 text-xs text-blue-300 cursor-pointer select-none hover:bg-blue-950/50 transition-colors;
+  @apply px-3 py-2 text-xs text-text-thinking cursor-pointer select-none;
+}
+
+.thinking-section summary:hover {
+  background: var(--th-bg-thinking);
+  filter: brightness(0.95);
 }
 
 .thinking-section .thinking-content {
-  @apply px-3 pb-3 text-xs text-zinc-400 whitespace-pre-wrap max-h-64 overflow-y-auto;
+  @apply px-3 pb-3 text-xs text-text-muted whitespace-pre-wrap max-h-64 overflow-y-auto;
 }
 
 .thinking-dots span {
