@@ -59,7 +59,7 @@ export function ConversationItem({ conversation, isActive, onCloseMobile }: Prop
           onChange={(e) => setEditTitle(e.target.value)}
           onBlur={handleRename}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleRename();
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleRename();
             if (e.key === 'Escape') setIsEditing(false);
           }}
           className="flex-1 bg-zinc-700 text-zinc-100 px-2 py-0.5 rounded text-sm outline-none"

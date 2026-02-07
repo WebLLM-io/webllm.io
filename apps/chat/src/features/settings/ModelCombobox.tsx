@@ -145,6 +145,7 @@ export function ModelCombobox() {
         setHighlightedIdx((i) => Math.max(i - 1, 0));
         break;
       case 'Enter':
+        if (e.nativeEvent.isComposing) return;
         e.preventDefault();
         if (highlightedIdx >= 0 && highlightedIdx < filtered.length) {
           select(filtered[highlightedIdx].model_id);

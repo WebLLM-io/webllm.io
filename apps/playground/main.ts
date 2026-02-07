@@ -1017,7 +1017,7 @@ userInput.addEventListener('input', () => {
 });
 
 userInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     handleSend();
   }
@@ -1043,7 +1043,7 @@ clearBtn.addEventListener('click', () => {
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
         </svg>
       </div>
-      <h2>WebLLM Playground</h2>
+      <h2>WebLLM.io Playground</h2>
       <p>Run large language models directly in your browser.</p>
     </div>
   `;
