@@ -34,6 +34,7 @@ pnpm + Turborepo monorepo with the following packages:
 - **Playground mode switching** — Mode tab switches only change UI state and per-request `provider` field; client is NOT rebuilt on tab switch. Only "Apply & Reinitialize" triggers `initClient()`. The client is always created with all available backends (local + cloud).
 - **Progress stage parsing** — `initProgressCallback` parses `progress.text` from web-llm: `/shader|compile/i` → `'compile'` stage, `progress >= 1` → `'warmup'`, otherwise → `'download'`
 - **Thinking model support** — Two formats: `<think>` tags in `delta.content` (DeepSeek R1, QwQ, local MLC) and `delta.reasoning_content` field (OpenAI o1/o3). `reasoning_content` takes priority. Only the answer portion is stored in chat history.
+- **Theme system (chat)** — CSS custom properties with `@theme inline` in Tailwind v4. Semantic color tokens (e.g. `bg-bg-surface`, `text-text-muted`) defined via `--th-*` CSS variables. Light mode is default; dark mode via `.dark` class on `<html>`. Theme persisted in localStorage (`webllm-chat-theme`). FOUC prevented by synchronous `<script>` in `<head>`. Components use semantic tokens, not raw color classes (`bg-zinc-800`). ModelCombobox badges are the only exception using `dark:` variants for accent colors.
 
 ## SDK Module Layout
 
