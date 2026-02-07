@@ -3,6 +3,7 @@ import { useStore } from '../../store';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
+import { ModelLoadingIndicator } from './ModelLoadingIndicator';
 import { ThinkingSection } from './ThinkingSection';
 import { ChatError } from './ChatError';
 import { useChat } from './hooks/useChat';
@@ -14,8 +15,10 @@ interface Props {
 
 export function ChatPanel({ conversationId }: Props) {
   const conversations = useStore((s) => s.conversations);
+  const pipelineStatus = useStore((s) => s.pipelineStatus);
   const conversation = conversations.find((c) => c.id === conversationId);
   const messages = conversation?.messages ?? [];
+  const isModelLoading = pipelineStatus === 'initializing' || pipelineStatus === 'loading';
 
   const { sendMessage } = useChat();
   const renderer = useStreamRenderer();
@@ -172,7 +175,7 @@ export function ChatPanel({ conversationId }: Props) {
         {isWaiting && (
           <div className="flex justify-start">
             <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface">
-              <TypingIndicator />
+              {isModelLoading ? <ModelLoadingIndicator /> : <TypingIndicator />}
             </div>
           </div>
         )}
