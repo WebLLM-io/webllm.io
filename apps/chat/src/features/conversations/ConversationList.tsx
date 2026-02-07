@@ -11,7 +11,7 @@ export function ConversationList({ onCloseMobile }: Props) {
 
   if (conversations.length === 0) {
     return (
-      <div className="px-3 py-4 text-xs text-zinc-600 text-center">
+      <div className="px-3 py-4 text-xs text-text-faint text-center">
         No conversations yet
       </div>
     );

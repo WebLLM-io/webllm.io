@@ -48,7 +48,7 @@ export function ConversationItem({ conversation, isActive, onCloseMobile }: Prop
     <div
       className={cn(
         'group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors',
-        isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200',
+        isActive ? 'bg-bg-surface text-text' : 'text-text-muted hover:bg-bg-surface-hover hover:text-text',
       )}
       onClick={!isEditing ? handleClick : undefined}
     >
@@ -62,7 +62,7 @@ export function ConversationItem({ conversation, isActive, onCloseMobile }: Prop
             if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleRename();
             if (e.key === 'Escape') setIsEditing(false);
           }}
-          className="flex-1 bg-zinc-700 text-zinc-100 px-2 py-0.5 rounded text-sm outline-none"
+          className="flex-1 bg-bg-surface-hover text-text px-2 py-0.5 rounded text-sm outline-none"
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
@@ -73,7 +73,7 @@ export function ConversationItem({ conversation, isActive, onCloseMobile }: Prop
         <div className="hidden group-hover:flex items-center gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); setEditTitle(conversation.title); setIsEditing(true); }}
-            className="p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="p-0.5 text-text-faint hover:text-text-secondary transition-colors"
             title="Rename"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -83,7 +83,7 @@ export function ConversationItem({ conversation, isActive, onCloseMobile }: Prop
           </button>
           <button
             onClick={handleDelete}
-            className="p-0.5 text-zinc-500 hover:text-red-400 transition-colors"
+            className="p-0.5 text-text-faint hover:text-red-400 transition-colors"
             title="Delete"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
