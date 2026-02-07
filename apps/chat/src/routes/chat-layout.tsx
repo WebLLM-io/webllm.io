@@ -27,16 +27,16 @@ export function ChatLayout() {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-2 border-b border-zinc-800">
+        <header className="md:hidden flex items-center gap-3 px-4 py-2 border-b border-border">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1 text-zinc-400 hover:text-zinc-200"
+            className="p-1 text-text-muted hover:text-text"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 12h18M3 6h18M3 18h18" />
             </svg>
           </button>
-          <span className="text-sm font-medium text-zinc-300">WebLLM.io Chat</span>
+          <span className="text-sm font-medium text-text-secondary">WebLLM.io Chat</span>
         </header>
 
         <Outlet />

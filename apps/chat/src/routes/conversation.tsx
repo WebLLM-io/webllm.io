@@ -22,7 +22,7 @@ export function ConversationPage() {
   if (!id || !exists) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-zinc-500 text-sm">Conversation not found</p>
+        <p className="text-text-muted text-sm">Conversation not found</p>
       </div>
     );
   }
