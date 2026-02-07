@@ -57,6 +57,8 @@ export class MLCBackend implements InferenceBackend {
   private ready = false;
   private currentModel: string | null = null;
   private queue = new RequestQueue();
+  private loadAbortController: AbortController | null = null;
+  private worker: Worker | null = null;
 
   constructor(config: MLCBackendConfig, onProgress?: ProgressCallback) {
     this.config = config;
@@ -80,17 +82,36 @@ export class MLCBackend implements InferenceBackend {
   }
 
   async load(modelId: string): Promise<void> {
+    // Abort any previous loading operation
+    if (this.loadAbortController) {
+      this.loadAbortController.abort();
+    }
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+
+    this.loadAbortController = new AbortController();
+    const signal = this.loadAbortController.signal;
     const useWorker = this.config.useWebWorker !== false;
 
     try {
       if (useWorker) {
         const { CreateWebWorkerMLCEngine } = await import('@mlc-ai/web-llm');
+
+        if (signal.aborted) {
+          throw new WebLLMError('ABORTED', 'Model load aborted');
+        }
+
         const worker = new Worker(
           new URL('./worker-entry.js', import.meta.url),
           { type: 'module' },
         );
+        this.worker = worker;
+
         this.engine = (await CreateWebWorkerMLCEngine(worker, modelId, {
           initProgressCallback: (progress) => {
+            if (signal.aborted) return;
             const text: string = (progress as any).text || '';
             let stage: 'download' | 'compile' | 'warmup' = 'download';
             if (progress.progress >= 1) {
@@ -107,8 +128,14 @@ export class MLCBackend implements InferenceBackend {
         })) as unknown as MLCEngine;
       } else {
         const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+
+        if (signal.aborted) {
+          throw new WebLLMError('ABORTED', 'Model load aborted');
+        }
+
         this.engine = (await CreateMLCEngine(modelId, {
           initProgressCallback: (progress) => {
+            if (signal.aborted) return;
             const text: string = (progress as any).text || '';
             let stage: 'download' | 'compile' | 'warmup' = 'download';
             if (progress.progress >= 1) {
@@ -125,9 +152,17 @@ export class MLCBackend implements InferenceBackend {
         })) as unknown as MLCEngine;
       }
 
+      if (signal.aborted) {
+        throw new WebLLMError('ABORTED', 'Model load aborted');
+      }
+
       this.currentModel = modelId;
       this.ready = true;
+      this.loadAbortController = null;
     } catch (err) {
+      if ((err as Error).message?.includes('aborted') || signal.aborted) {
+        throw new WebLLMError('ABORTED', 'Model load aborted');
+      }
       throw new WebLLMError('MODEL_LOAD_FAILED', `Failed to load model: ${modelId}`, err);
     }
   }
@@ -216,6 +251,18 @@ export class MLCBackend implements InferenceBackend {
   }
 
   async dispose(): Promise<void> {
+    // Abort any ongoing load operation
+    if (this.loadAbortController) {
+      this.loadAbortController.abort();
+      this.loadAbortController = null;
+    }
+
+    // Terminate worker if it exists (covers both loading and loaded states)
+    if (this.worker) {
+      this.worker.terminate();
+      this.worker = null;
+    }
+
     await this.unload();
   }
 }
