@@ -33,4 +33,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/chat/dist --project-name=webllm-chat
+          command: pages deploy apps/chat/dist --project-name=webllm-io-chat

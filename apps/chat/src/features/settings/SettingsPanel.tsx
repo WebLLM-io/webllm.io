@@ -19,6 +19,7 @@ export function SettingsPanel({ onApply }: Props) {
   const handleApply = () => {
     persistSettings();
     onApply();
+    setIsOpen(false);
   };
 
   return (
@@ -50,7 +51,7 @@ export function SettingsPanel({ onApply }: Props) {
 
           <button
             onClick={handleApply}
-            className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-sm font-medium rounded-lg transition-all"
           >
             Apply &amp; Reinitialize
           </button>

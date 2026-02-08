@@ -47,6 +47,7 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
   let localBackend: InferenceBackend | null = null;
   let cloudBackend: InferenceBackend | null = null;
   let localInitPromise: Promise<void> | null = null;
+  let disposed = false;
 
   // Initialize cloud immediately (it's lightweight)
   if (resolvedCloud) {
@@ -65,8 +66,10 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
   async function initLocalBackend(backend: InferenceBackend): Promise<void> {
     try {
       const stats = await getDeviceContext();
+      if (disposed) return;
       await (backend as MLCBackend).initialize(stats.grade);
     } catch (err) {
+      if (disposed) return;
       logger.warn('Local backend initialization failed:', err);
       localBackend = null;
       onError?.(err instanceof Error ? err : new Error(String(err)));
@@ -121,6 +124,7 @@ export function createClient(options: CreateClientOptions = {}): WebLLMClient {
     },
 
     async dispose(): Promise<void> {
+      disposed = true;
       await Promise.all([
         localBackend?.dispose(),
         cloudBackend?.dispose(),

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { createClient, checkCapability } from '@webllm-io/sdk';
 import { useStore } from '../../../store';
 
@@ -10,10 +10,16 @@ export function useSDKInit() {
   const setErrorMessage = useStore((s) => s.setErrorMessage);
   const setLastRouteDecision = useStore((s) => s.setLastRouteDecision);
 
+  // Generation counter: prevents stale callbacks from a disposed client
+  // from overwriting state set by a newer initClient() call.
+  const genRef = useRef(0);
+
   const initClient = useCallback(() => {
     // Dispose existing client
     const currentClient = useStore.getState().client;
     if (currentClient) currentClient.dispose();
+
+    const gen = ++genRef.current;
 
     const state = useStore.getState();
 
@@ -37,6 +43,24 @@ export function useSDKInit() {
       },
     };
 
+    function handleProgress(p: { stage: string; progress: number; model: string }) {
+      if (genRef.current !== gen) return;
+      const stage = /shader|compile/i.test(p.stage) ? 'compile' : p.progress >= 1 ? 'ready' : 'download';
+      setLoadProgress({ stage: stage as 'download' | 'compile' | 'ready', progress: p.progress, model: p.model });
+      setPipelineStatus('loading');
+
+      if (p.progress >= 1) {
+        setPipelineStatus('ready');
+        setTimeout(() => setLoadProgress(null), 800);
+      }
+    }
+
+    function handleInitError(err: Error) {
+      if (genRef.current !== gen) return;
+      setErrorMessage(err.message);
+      setPipelineStatus('error');
+    }
+
     if (state.mode === 'cloud') {
       opts.local = false;
       if (cloudConfig) opts.cloud = cloudConfig;
@@ -54,7 +78,13 @@ export function useSDKInit() {
       if (cloudConfig) opts.cloud = cloudConfig;
     }
 
-    if (!opts.local && !opts.cloud) return;
+    if (!opts.local && !opts.cloud) {
+      setClient(null);
+      setLoadProgress(null);
+      setPipelineStatus('idle');
+      setErrorMessage(null);
+      return;
+    }
 
     try {
       const client = createClient(opts);
@@ -67,22 +97,6 @@ export function useSDKInit() {
       setPipelineStatus('error');
     }
   }, [setClient, setPipelineStatus, setLoadProgress, setErrorMessage, setLastRouteDecision]);
-
-  function handleProgress(p: { stage: string; progress: number; model: string }) {
-    const stage = /shader|compile/i.test(p.stage) ? 'compile' : p.progress >= 1 ? 'ready' : 'download';
-    setLoadProgress({ stage: stage as 'download' | 'compile' | 'ready', progress: p.progress, model: p.model });
-    setPipelineStatus('loading');
-
-    if (p.progress >= 1) {
-      setPipelineStatus('ready');
-      setTimeout(() => setLoadProgress(null), 800);
-    }
-  }
-
-  function handleInitError(err: Error) {
-    setErrorMessage(err.message);
-    setPipelineStatus('error');
-  }
 
   // Detect capabilities on mount
   useEffect(() => {

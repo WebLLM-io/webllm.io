@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@mlc-ai/web-llm'],
+    exclude: ['@mlc-ai/web-llm', '@webllm-io/sdk'],
   },
   worker: {
     format: 'es',

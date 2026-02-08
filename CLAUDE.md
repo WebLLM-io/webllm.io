@@ -34,10 +34,13 @@ pnpm + Turborepo monorepo with the following packages:
 - **Playground mode switching** — Mode tab switches only change UI state and per-request `provider` field; client is NOT rebuilt on tab switch. Only "Apply & Reinitialize" triggers `initClient()`. The client is always created with all available backends (local + cloud).
 - **Progress stage parsing** — `initProgressCallback` parses `progress.text` from web-llm: `/shader|compile/i` → `'compile'` stage, `progress >= 1` → `'warmup'`, otherwise → `'download'`
 - **Thinking model support** — Two formats: `<think>` tags in `delta.content` (DeepSeek R1, QwQ, local MLC) and `delta.reasoning_content` field (OpenAI o1/o3). `reasoning_content` takes priority. Only the answer portion is stored in chat history.
-- **Theme system (chat)** — CSS custom properties with `@theme inline` in Tailwind v4. Semantic color tokens (e.g. `bg-bg-surface`, `text-text-muted`) defined via `--th-*` CSS variables. Light mode is default; dark mode via `.dark` class on `<html>`. Theme persisted in localStorage (`webllm-chat-theme`). FOUC prevented by synchronous `<script>` in `<head>`. Components use semantic tokens, not raw color classes (`bg-zinc-800`). ModelCombobox badges are the only exception using `dark:` variants for accent colors.
+- **Theme system (chat)** — CSS custom properties with `@theme inline` in Tailwind v4. Semantic color tokens (e.g. `bg-bg-surface`, `text-text-muted`) defined via `--th-*` CSS variables. Light mode is default; dark mode via `.dark` class on `<html>`. Theme persisted in localStorage (`webllm-io-chat-theme`). FOUC prevented by synchronous `<script>` in `<head>`. Components use semantic tokens, not raw color classes (`bg-zinc-800`). ModelCombobox badges are the only exception using `dark:` variants for accent colors.
 - **Message actions (chat)** — Three per-message actions: **Copy** (all messages, copies raw text to clipboard with 2s checkmark feedback), **Edit** (user messages only, replaces bubble with auto-resize textarea, submits by truncating conversation from that point and re-sending), **Regenerate** (last assistant message only, deletes last assistant reply and re-triggers inference with `skipUserMessage`). Actions bar uses `group/message` hover reveal on desktop, always visible on mobile. `deleteMessagesFrom(conversationId, messageIndex)` in ConversationsSlice handles history truncation.
 - **Init-aware inference** — `MLCBackend.stream()` and `complete()` wait for model initialization if `initPromise` is active, instead of throwing immediately. Callers can send requests during model loading; the SDK queues them until init completes. Waiting respects abort signals. If init fails, the error propagates to waiting callers.
-- **Mode persistence (chat)** — `setMode()` automatically persists settings to IndexedDB, so the selected mode (auto/local/cloud) survives page refreshes without requiring "Apply & Reinitialize". When `initClient()` creates a new client, it clears `loadProgress` to prevent stale progress bars from appearing after mode switches.
+- **Client disposal safety** — `createClient()` closure contains a `disposed` flag. `dispose()` sets it to `true` before cleaning up backends. The async `initLocalBackend()` function checks `disposed` after `await getDeviceContext()` and in its catch block — this prevents zombie downloads (a disposed backend creating a new WebWorker) and stale `onError` callbacks from overwriting new client state.
+- **Callback scoping (chat)** — `useSDKInit` uses a generation counter (`useRef`) to scope `onProgress` and `onError` callbacks to each `initClient()` call. Each call increments the counter; callbacks check `genRef.current !== gen` and return early if stale. This prevents a disposed client's lingering callbacks from overwriting the new client's UI state.
+- **Cloud error diagnostics** — Cloud backend reads API response JSON body on errors (`error.message` field) for detailed diagnostics instead of only showing the generic HTTP status. If no model is configured, the `model` field is omitted from the request body (instead of defaulting to `'default'`) to avoid 400 errors.
+- **Mode persistence (chat)** — `setMode()` automatically persists settings to IndexedDB, so the selected mode (auto/local/cloud) survives page refreshes without requiring "Apply & Reinitialize". When `initClient()` creates a new client, it clears `loadProgress` to prevent stale progress bars from appearing after mode switches. If no backend is configured (e.g. cloud mode without URL), `initClient()` resets UI state (`client=null`, `pipelineStatus='idle'`, `loadProgress=null`) instead of leaving stale indicators. The "Apply & Reinitialize" button auto-collapses the settings panel and has `active:scale-95` press feedback.
 - **Model loading indicator (chat)** — When a chat message is sent while the local model is still loading (`pipelineStatus` is `'initializing'` or `'loading'`), the assistant bubble shows a `ModelLoadingIndicator` with spinner, model name, progress bar, percentage, and stage label (Downloading / Compiling shaders / Warming up) instead of the default three-dot `TypingIndicator`. The indicator only appears when the request will actually wait for local init: in cloud mode it never shows; in auto mode with cloud configured, the SDK routes to cloud so `TypingIndicator` is shown instead. Once loading completes, it transitions naturally to typing indicator then streaming.
 
 ## SDK Module Layout
@@ -102,7 +105,7 @@ Astro Starlight site. Content in `src/content/docs/` as MDX files. Sidebar struc
 pnpm --filter @webllm-io/chat dev     # Start on localhost:5174
 ```
 
-React 19 chat application with multi-conversation support. Tech stack: Vite 6, React Router v7, Zustand 5, Tailwind CSS v4, IndexedDB (idb-keyval). Feature-based module organization under `src/features/` (conversations, chat, settings, sdk). Shared markdown/thinking utilities ported from playground.
+React 19 chat application with multi-conversation support. Tech stack: Vite 6, React Router v7, Zustand 5, Tailwind CSS v4, IndexedDB (idb-keyval). Feature-based module organization under `src/features/` (conversations, chat, settings, sdk). Shared markdown/thinking utilities ported from playground. `@webllm-io/sdk` and `@mlc-ai/web-llm` are excluded from Vite `optimizeDeps` to avoid stale pre-bundling cache — SDK source changes require `pnpm --filter @webllm-io/sdk build` then restart the dev server.
 
 ### Port Allocation
 
@@ -230,7 +233,7 @@ Assistant messages are rendered as Markdown with syntax highlighting:
 
 - **Hosting**: Cloudflare Pages
 - **Main site project name**: `webllm-io` (domain: `webllm.io`)
-- **Chat app project name**: `webllm-chat` (domain: `chat.webllm.io`)
+- **Chat app project name**: `webllm-io-chat` (domain: `chat.webllm.io`)
 
 ### URL Mapping
 
@@ -248,7 +251,7 @@ Assistant messages are rendered as Markdown with syntax highlighting:
 ### CI/CD Workflows
 
 - **`.github/workflows/deploy.yml`** — Deploys `dist/site/` to Cloudflare Pages on push to main
-- **`.github/workflows/deploy-chat.yml`** — Deploys `apps/chat/dist` to Cloudflare Pages project `webllm-chat` on push to main when `apps/chat/**` or `packages/sdk/**` changes
+- **`.github/workflows/deploy-chat.yml`** — Deploys `apps/chat/dist` to Cloudflare Pages project `webllm-io-chat` on push to main when `apps/chat/**` or `packages/sdk/**` changes
 - **`.github/workflows/release.yml`** — Changesets-based npm publishing on push to main (uses npm Trusted Publishing via OIDC, no token needed). Requires Node 24+ (npm >= 11.5.1 for OIDC support). `changesets/action` only creates version PRs; publishing is a separate step to avoid `.npmrc` conflicts with OIDC auth. After publishing, `pnpm changeset tag` creates git tags (e.g., `@webllm-io/sdk@1.0.0`) and pushes them to origin.
 - **Changesets ignore list** — Only `@webllm-io/sdk` is published; private app packages (`web`, `docs`, `playground`, `chat`) are listed in `.changeset/config.json` `ignore` to skip version management. Note: `tsconfig` cannot be ignored because `sdk` depends on it.
 

@@ -39,9 +39,16 @@ async function fetchWithRetry(
       }
 
       if (!res.ok) {
+        let detail = '';
+        try {
+          const body = await res.json();
+          detail = body.error?.message || JSON.stringify(body);
+        } catch { /* ignore parse errors */ }
         throw new WebLLMError(
           'CLOUD_REQUEST_FAILED',
-          `HTTP ${res.status}: ${res.statusText}`,
+          detail
+            ? `HTTP ${res.status}: ${detail}`
+            : `HTTP ${res.status}: ${res.statusText}`,
         );
       }
 
@@ -98,7 +105,7 @@ export class FetchBackend implements InferenceBackend {
 
   private buildBody(req: ChatCompletionRequest, stream: boolean): string {
     return JSON.stringify({
-      model: req.model ?? this.config.model ?? 'default',
+      ...(req.model || this.config.model ? { model: req.model ?? this.config.model } : {}),
       messages: req.messages,
       stream,
       ...(stream && { stream_options: { include_usage: true } }),
