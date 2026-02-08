@@ -17,7 +17,7 @@ export function ChatLayout() {
   }, [initClient]);
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full overflow-hidden">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -25,7 +25,7 @@ export function ChatLayout() {
       />
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
         <header className="md:hidden flex items-center gap-3 px-4 py-2 border-b border-border">
           <button
