@@ -9,29 +9,30 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@webllm-io/sdk": "workspace:*",
     "@mlc-ai/web-llm": "^0.2.80",
+    "@webllm-io/sdk": "workspace:*",
+    "clsx": "^2",
+    "dompurify": "^3",
+    "highlight.js": "^11",
+    "idb-keyval": "^6",
+    "marked": "^15",
+    "marked-highlight": "^2",
+    "nanoid": "^5",
+    "pdfjs-dist": "^5.4.624",
     "react": "^19",
     "react-dom": "^19",
     "react-router": "^7",
-    "zustand": "^5",
-    "idb-keyval": "^6",
-    "nanoid": "^5",
-    "marked": "^15",
-    "marked-highlight": "^2",
-    "dompurify": "^3",
-    "highlight.js": "^11",
-    "clsx": "^2",
-    "tailwind-merge": "^3"
+    "tailwind-merge": "^3",
+    "zustand": "^5"
   },
   "devDependencies": {
-    "vite": "^6",
-    "typescript": "^5.5",
-    "@webllm-io/tsconfig": "workspace:*",
-    "@vitejs/plugin-react": "^4",
     "@tailwindcss/vite": "^4",
-    "tailwindcss": "^4",
     "@types/react": "^19",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "@webllm-io/tsconfig": "workspace:*",
+    "tailwindcss": "^4",
+    "typescript": "^5.5",
+    "vite": "^6"
   }
 }

@@ -1,3 +1,6 @@
+import type { FileAttachment } from '../attachments/types';
+import type { SearchResult } from '../search/types';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -7,6 +10,8 @@ export interface ChatMessage {
   model?: string;
   route?: 'local' | 'cloud';
   usage?: { prompt_tokens: number; completion_tokens: number };
+  attachments?: FileAttachment[];
+  searchResults?: SearchResult[];
   createdAt: number;
 }
 
