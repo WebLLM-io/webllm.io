@@ -42,6 +42,9 @@ pnpm + Turborepo monorepo with the following packages:
 - **Cloud error diagnostics** — Cloud backend reads API response JSON body on errors (`error.message` field) for detailed diagnostics instead of only showing the generic HTTP status. If no model is configured, the `model` field is omitted from the request body (instead of defaulting to `'default'`) to avoid 400 errors.
 - **Mode persistence (chat)** — `setMode()` automatically persists settings to IndexedDB, so the selected mode (auto/local/cloud) survives page refreshes without requiring "Apply & Reinitialize". When `initClient()` creates a new client, it clears `loadProgress` to prevent stale progress bars from appearing after mode switches. If no backend is configured (e.g. cloud mode without URL), `initClient()` resets UI state (`client=null`, `pipelineStatus='idle'`, `loadProgress=null`) instead of leaving stale indicators. The "Apply & Reinitialize" button auto-collapses the settings panel and has `active:scale-95` press feedback.
 - **Model loading indicator (chat)** — When a chat message is sent while the local model is still loading (`pipelineStatus` is `'initializing'` or `'loading'`), the assistant bubble shows a `ModelLoadingIndicator` with spinner, model name, progress bar, percentage, and stage label (Downloading / Compiling shaders / Warming up) instead of the default three-dot `TypingIndicator`. The indicator only appears when the request will actually wait for local init: in cloud mode it never shows; in auto mode with cloud configured, the SDK routes to cloud so `TypingIndicator` is shown instead. Once loading completes, it transitions naturally to typing indicator then streaming.
+- **Multi-part content** — SDK `Message.content` supports `string | ContentPart[]` (OpenAI compatible). Cloud backend passes as-is; local MLC backend flattens via `flattenContent()`. Chat app always constructs string content with context injected as text prefix.
+- **Web search (chat)** — Configurable search API (Tavily/SearXNG) via Settings panel. Search is per-message opt-in via globe button in ChatInput. Results formatted as `[Search Context]` prefix to last user message. Citations displayed in collapsible `SourcesCitation` component below assistant messages. No global search toggle — available when `searchBaseURL` is configured.
+- **Document attachments (chat)** — Client-side text extraction using `pdfjs-dist` for PDF and direct `file.text()` for text files (TXT, MD, CSV, JSON, HTML). Limits: 10MB/file, 5 attachments/message, 100K chars/file. Extracted text stored in `ChatMessage.attachments`, formatted as `[Document Context]` prefix. `AttachmentPreview` shows files above textarea; `AttachmentBadge` shows compact labels in user bubbles.
 
 ## SDK Module Layout
 
@@ -53,7 +56,7 @@ packages/sdk/src/
 ├── providers/            # mlc(), fetchSSE(), custom provider wrappers
 ├── inference/            # InferenceBackend interface, queue, local/cloud backends
 ├── router/               # Route decision engine (local vs cloud)
-├── chat/                 # Completions API with fallback logic
+├── chat/                 # Completions API, content utilities, structured output
 ├── loader/               # Progressive loading, OPFS cache, load state manager
 └── utils/                # EventEmitter, SSE parser, logger
 ```
@@ -105,7 +108,7 @@ Astro Starlight site. Content in `src/content/docs/` as MDX files. Sidebar struc
 pnpm --filter @webllm-io/chat dev     # Start on localhost:5174
 ```
 
-React 19 chat application with multi-conversation support. Tech stack: Vite 6, React Router v7, Zustand 5, Tailwind CSS v4, IndexedDB (idb-keyval). Feature-based module organization under `src/features/` (conversations, chat, settings, sdk). Shared markdown/thinking utilities ported from playground. `@webllm-io/sdk` and `@mlc-ai/web-llm` are excluded from Vite `optimizeDeps` to avoid stale pre-bundling cache — SDK source changes require `pnpm --filter @webllm-io/sdk build` then restart the dev server.
+React 19 chat application with multi-conversation support. Tech stack: Vite 6, React Router v7, Zustand 5, Tailwind CSS v4, IndexedDB (idb-keyval). Feature-based module organization under `src/features/` (conversations, chat, settings, sdk, attachments, search). Shared markdown/thinking utilities ported from playground. `@webllm-io/sdk` and `@mlc-ai/web-llm` are excluded from Vite `optimizeDeps` to avoid stale pre-bundling cache — SDK source changes require `pnpm --filter @webllm-io/sdk build` then restart the dev server.
 
 ### Port Allocation
 
@@ -287,3 +290,4 @@ Configure on npmjs.com:
 - `@changesets/cli` — Version management
 - `astro` — Static site framework for web and docs apps
 - `@astrojs/starlight` — Documentation theme for docs app
+- `pdfjs-dist` — Client-side PDF text extraction (chat app)
