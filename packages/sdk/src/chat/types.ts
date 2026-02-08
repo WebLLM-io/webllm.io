@@ -1,8 +1,15 @@
 // OpenAI-compatible Chat Completions types
 
+export interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export type ContentPart = TextContentPart;
+
 export interface Message {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | ContentPart[];
 }
 
 export interface ChatCompletionRequest {

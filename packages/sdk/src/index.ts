@@ -25,11 +25,16 @@ export type { ResolvedLocalBackend, ResolvedCloudBackend } from './providers/typ
 // Chat types
 export type {
   Message,
+  TextContentPart,
+  ContentPart,
   ChatCompletion,
   ChatCompletionChunk,
   ChatCompletionRequest,
   Completions,
 } from './chat/types.js';
+
+// Chat utilities
+export { flattenContent } from './chat/content.js';
 
 // Loader
 export { hasModelInCache, deleteModelFromCache } from './loader/index.js';

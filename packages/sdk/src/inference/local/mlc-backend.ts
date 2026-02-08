@@ -9,6 +9,7 @@ import type { MLCBackendConfig } from './types.js';
 import type { DeviceGrade } from '../../capability/types.js';
 import { WebLLMError } from '../../core/errors.js';
 import { RequestQueue } from '../queue.js';
+import { flattenContent } from '../../chat/content.js';
 
 const RECOMMENDED_MODELS = {
   high: 'Qwen3-8B-q4f16_1-MLC',
@@ -230,8 +231,9 @@ export class MLCBackend implements InferenceBackend {
       signal?.addEventListener('abort', onAbort, { once: true });
 
       try {
+        const flatMessages = req.messages.map((m) => ({ role: m.role, content: flattenContent(m.content) }));
         const result = await this.engine.chat.completions.create({
-          messages: req.messages,
+          messages: flatMessages,
           stream: false,
           ...(req.temperature !== undefined && { temperature: req.temperature }),
           ...(req.max_tokens !== undefined && { max_tokens: req.max_tokens }),
@@ -269,8 +271,9 @@ export class MLCBackend implements InferenceBackend {
     signal?.addEventListener('abort', onAbort, { once: true });
 
     try {
+      const flatMessages = req.messages.map((m) => ({ role: m.role, content: flattenContent(m.content) }));
       const chunks = await this.engine.chat.completions.create({
-        messages: req.messages,
+        messages: flatMessages,
         stream: true,
         ...(req.temperature !== undefined && { temperature: req.temperature }),
         ...(req.max_tokens !== undefined && { max_tokens: req.max_tokens }),
