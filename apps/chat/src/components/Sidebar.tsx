@@ -85,68 +85,70 @@ export function Sidebar({ isOpen, onClose, onApplySettings }: Props) {
           <NewChatButton />
         </div>
 
-        {/* Scrollable content area */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {/* Conversation list */}
-          <div className="px-1">
-            <ConversationList onCloseMobile={onClose} />
-          </div>
+        {/* Conversation list — independently scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-1">
+          <ConversationList onCloseMobile={onClose} />
+        </div>
 
-          {/* Status card */}
-          <div className="border-t border-border px-3 py-3">
-            <div className="space-y-1.5 text-xs">
-              <StatusRow label="WebGPU" value={capability?.webgpu ? 'Available' : 'Checking...'} className={capability?.webgpu ? 'text-status-success' : 'text-text-muted'} />
-              <StatusRow label="VRAM" value={capability?.gpu ? `${capability.gpu.vram} MB` : '—'} />
-              <StatusRow label="Grade" value={capability ? `${capability.grade} (${GRADE_THRESHOLDS[capability.grade] || ''})` : '—'} />
-              <StatusRow label="Model" value={clientStatus?.localModel || '—'} />
-              <StatusRow label="Status" value={statusLabels[pipelineStatus]} className={statusColors[pipelineStatus]} />
-              <StatusRow label="Local" value={localTotal.toLocaleString()} />
-              <StatusRow label="Cloud" value={cloudTotal.toLocaleString()} />
+        {/* Bottom zone — pinned, with max-height cap */}
+        <div className="shrink-0 max-h-[50%] flex flex-col overflow-hidden border-t border-border">
+          <div className="overflow-y-auto">
+            {/* Status card */}
+            <div className="px-3 py-3">
+              <div className="space-y-1.5 text-xs">
+                <StatusRow label="WebGPU" value={capability?.webgpu ? 'Available' : 'Checking...'} className={capability?.webgpu ? 'text-status-success' : 'text-text-muted'} />
+                <StatusRow label="VRAM" value={capability?.gpu ? `${capability.gpu.vram} MB` : '—'} />
+                <StatusRow label="Grade" value={capability ? `${capability.grade} (${GRADE_THRESHOLDS[capability.grade] || ''})` : '—'} />
+                <StatusRow label="Model" value={clientStatus?.localModel || '—'} />
+                <StatusRow label="Status" value={statusLabels[pipelineStatus]} className={statusColors[pipelineStatus]} />
+                <StatusRow label="Local" value={localTotal.toLocaleString()} />
+                <StatusRow label="Cloud" value={cloudTotal.toLocaleString()} />
+              </div>
+
+              {/* Progress */}
+              {loadProgress && (
+                <div className="mt-2">
+                  <div className="text-xs text-text-muted mb-1">{loadProgress.model} ({Math.round(loadProgress.progress * 100)}%)</div>
+                  <div className="h-1 bg-bg-surface rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: `${Math.round(loadProgress.progress * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    {(['download', 'compile', 'ready'] as const).map((stage) => {
+                      const stages = ['download', 'compile', 'ready'];
+                      const currentIdx = stages.indexOf(loadProgress.stage);
+                      const stageIdx = stages.indexOf(stage);
+                      const isComplete = stageIdx < currentIdx;
+                      const isActive = stageIdx === currentIdx;
+                      return (
+                        <span
+                          key={stage}
+                          className={`text-[10px] ${isComplete ? 'text-status-success' : isActive ? 'text-status-info' : 'text-text-faint'}`}
+                        >
+                          {stage.charAt(0).toUpperCase() + stage.slice(1)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Error */}
+              {pipelineStatus === 'error' && errorMessage && (
+                <div className="mt-2 p-2 bg-bg-error border border-border-error rounded text-xs text-text-error">
+                  {errorMessage}
+                </div>
+              )}
             </div>
 
-            {/* Progress */}
-            {loadProgress && (
-              <div className="mt-2">
-                <div className="text-xs text-text-muted mb-1">{loadProgress.model} ({Math.round(loadProgress.progress * 100)}%)</div>
-                <div className="h-1 bg-bg-surface rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 transition-all duration-300"
-                    style={{ width: `${Math.round(loadProgress.progress * 100)}%` }}
-                  />
-                </div>
-                <div className="flex gap-2 mt-1">
-                  {(['download', 'compile', 'ready'] as const).map((stage) => {
-                    const stages = ['download', 'compile', 'ready'];
-                    const currentIdx = stages.indexOf(loadProgress.stage);
-                    const stageIdx = stages.indexOf(stage);
-                    const isComplete = stageIdx < currentIdx;
-                    const isActive = stageIdx === currentIdx;
-                    return (
-                      <span
-                        key={stage}
-                        className={`text-[10px] ${isComplete ? 'text-status-success' : isActive ? 'text-status-info' : 'text-text-faint'}`}
-                      >
-                        {stage.charAt(0).toUpperCase() + stage.slice(1)}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {pipelineStatus === 'error' && errorMessage && (
-              <div className="mt-2 p-2 bg-bg-error border border-border-error rounded text-xs text-text-error">
-                {errorMessage}
-              </div>
-            )}
+            {/* Settings */}
+            <SettingsPanel onApply={onApplySettings} />
           </div>
 
-          {/* Settings */}
-          <SettingsPanel onApply={onApplySettings} />
-
-          {/* Footer */}
-          <div className="border-t border-border px-4 py-2 text-[10px] text-text-faint text-center">
+          {/* Footer — always pinned at bottom */}
+          <div className="shrink-0 border-t border-border px-4 py-2 text-[10px] text-text-faint text-center">
             &copy; 2026 WebLLM.io &middot; MIT License
           </div>
         </div>
