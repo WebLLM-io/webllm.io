@@ -21,6 +21,9 @@ export interface PersistedSettings {
   cloudModel: string;
   cloudTimeout: string;
   cloudRetries: string;
+  searchBaseURL?: string;
+  searchApiKey?: string;
+  searchMaxResults?: string;
 }
 
 export async function loadSettings(): Promise<PersistedSettings | null> {

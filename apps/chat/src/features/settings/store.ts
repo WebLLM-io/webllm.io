@@ -11,6 +11,9 @@ export interface SettingsSlice {
   cloudModel: string;
   cloudTimeout: string;
   cloudRetries: string;
+  searchBaseURL: string;
+  searchApiKey: string;
+  searchMaxResults: string;
   setMode: (mode: string) => void;
   setLocalModel: (model: string) => void;
   setLocalWebWorker: (enabled: boolean) => void;
@@ -20,6 +23,9 @@ export interface SettingsSlice {
   setCloudModel: (model: string) => void;
   setCloudTimeout: (timeout: string) => void;
   setCloudRetries: (retries: string) => void;
+  setSearchBaseURL: (url: string) => void;
+  setSearchApiKey: (key: string) => void;
+  setSearchMaxResults: (max: string) => void;
   persistSettings: () => void;
   hydrateSettings: () => Promise<void>;
 }
@@ -34,6 +40,9 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
   cloudModel: '',
   cloudTimeout: '',
   cloudRetries: '',
+  searchBaseURL: '',
+  searchApiKey: '',
+  searchMaxResults: '5',
 
   setMode: (mode) => {
     set({ mode });
@@ -47,6 +56,9 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
   setCloudModel: (cloudModel) => set({ cloudModel }),
   setCloudTimeout: (cloudTimeout) => set({ cloudTimeout }),
   setCloudRetries: (cloudRetries) => set({ cloudRetries }),
+  setSearchBaseURL: (searchBaseURL) => set({ searchBaseURL }),
+  setSearchApiKey: (searchApiKey) => set({ searchApiKey }),
+  setSearchMaxResults: (searchMaxResults) => set({ searchMaxResults }),
 
   persistSettings: () => {
     const s = get();
@@ -60,6 +72,9 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
       cloudModel: s.cloudModel,
       cloudTimeout: s.cloudTimeout,
       cloudRetries: s.cloudRetries,
+      searchBaseURL: s.searchBaseURL,
+      searchApiKey: s.searchApiKey,
+      searchMaxResults: s.searchMaxResults,
     };
     saveSettings(data);
   },
@@ -77,6 +92,9 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
         cloudModel: data.cloudModel,
         cloudTimeout: data.cloudTimeout,
         cloudRetries: data.cloudRetries,
+        searchBaseURL: data.searchBaseURL ?? '',
+        searchApiKey: data.searchApiKey ?? '',
+        searchMaxResults: data.searchMaxResults ?? '5',
       });
     }
   },

@@ -3,6 +3,7 @@ import { useStore } from '../../store';
 import { ModeSelector } from './ModeSelector';
 import { LocalSettings } from './LocalSettings';
 import { CloudSettings } from './CloudSettings';
+import { SearchSettings } from './SearchSettings';
 
 interface Props {
   onApply: () => void;
@@ -48,6 +49,7 @@ export function SettingsPanel({ onApply }: Props) {
 
           {showLocal && <LocalSettings />}
           {showCloud && <CloudSettings />}
+          <SearchSettings />
 
           <button
             onClick={handleApply}
