@@ -55,7 +55,7 @@ export function Sidebar({ isOpen, onClose, onApplySettings }: Props) {
       <aside
         className={`
           fixed md:static inset-y-0 left-0 z-50 w-[280px] bg-bg-sidebar border-r border-border
-          flex flex-col transition-transform duration-200
+          flex flex-col overflow-hidden transition-transform duration-200
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}
       >
