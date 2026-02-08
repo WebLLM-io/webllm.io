@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore } from '../../store';
 import { MessageList } from './MessageList';
-import { ChatInput } from './ChatInput';
+import { ChatInput, type SendOptions } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
 import { ModelLoadingIndicator } from './ModelLoadingIndicator';
 import { ThinkingSection } from './ThinkingSection';
 import { ChatError } from './ChatError';
 import { useChat } from './hooks/useChat';
 import { useStreamRenderer } from './hooks/useStreamRenderer';
+import { searchWeb } from '../search/client';
+import type { SearchResult } from '../search/types';
 
 interface Props {
   conversationId: string;
@@ -50,11 +52,34 @@ export function ChatPanel({ conversationId }: Props) {
     abortRef.current?.abort();
   }, []);
 
-  const handleSend = useCallback((text: string, options?: { skipUserMessage?: boolean }) => {
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSend = useCallback(async (text: string, sendOpts?: SendOptions & { skipUserMessage?: boolean }) => {
     // Abort any existing request
     abortRef.current?.abort();
 
     setError(null);
+
+    // If search is enabled, fetch results first
+    let searchResults: SearchResult[] | undefined;
+    if (sendOpts?.searchEnabled) {
+      const store = useStore.getState();
+      const { searchBaseURL, searchApiKey, searchMaxResults } = store;
+      if (searchBaseURL) {
+        setIsSearching(true);
+        try {
+          searchResults = await searchWeb(text, {
+            baseURL: searchBaseURL,
+            apiKey: searchApiKey,
+            maxResults: parseInt(searchMaxResults, 10) || 5,
+          });
+        } catch {
+          // Search failed — continue without results
+        }
+        setIsSearching(false);
+      }
+    }
+
     setIsWaiting(true);
     setIsStreaming(true);
     setStreamingEl(null);
@@ -126,7 +151,11 @@ export function ChatPanel({ conversationId }: Props) {
         if (!thinkingRef.current.startTime) return null;
         return Date.now() - thinkingRef.current.startTime;
       },
-    }, options);
+    }, {
+      skipUserMessage: sendOpts?.skipUserMessage,
+      attachments: sendOpts?.attachments,
+      searchResults,
+    });
   }, [conversationId, sendMessage, renderer]);
 
   const handleRetry = useCallback(() => {
@@ -174,7 +203,17 @@ export function ChatPanel({ conversationId }: Props) {
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <MessageList messages={messages} isStreaming={isStreaming} onRegenerate={handleRegenerate} onEditSubmit={handleEditSubmit}>
+      <MessageList messages={messages} isStreaming={isStreaming || isSearching} onRegenerate={handleRegenerate} onEditSubmit={handleEditSubmit}>
+        {isSearching && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface text-text-muted text-sm flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+              Searching the web...
+            </div>
+          </div>
+        )}
         {isWaiting && (
           <div className="flex justify-start">
             <div className="max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 bg-bg-surface">
@@ -191,7 +230,7 @@ export function ChatPanel({ conversationId }: Props) {
           </div>
         )}
       </MessageList>
-      <ChatInput onSend={handleSend} isStreaming={isStreaming} onAbort={handleAbort} />
+      <ChatInput onSend={handleSend} isStreaming={isStreaming || isSearching} onAbort={handleAbort} />
     </div>
   );
 }

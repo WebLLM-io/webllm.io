@@ -4,8 +4,12 @@ import type { ChatCompletionChunk, Message } from '@webllm-io/sdk';
 import { useStore } from '../../../store';
 import { parseThinkingContent } from '../../../shared/thinking';
 import type { ChatMessage } from '../../conversations/types';
+import type { FileAttachment } from '../../attachments/types';
+import type { SearchResult } from '../../search/types';
+import { formatAttachmentsContext } from '../../attachments/format';
+import { formatSearchContext } from '../../search/format';
 
-interface SendOptions {
+interface StreamCallbacks {
   onFirstChunk: () => void;
   onThinking: (thinking: string, isThinking: boolean) => void;
   onAnswer: (answer: string) => void;
@@ -17,19 +21,27 @@ interface SendOptions {
   getThinkingTime: () => number | null;
 }
 
+interface SendExtras {
+  skipUserMessage?: boolean;
+  attachments?: FileAttachment[];
+  searchResults?: SearchResult[];
+}
+
 export function useChat() {
   const sendMessage = useCallback(
-    async (text: string, conversationId: string, abortSignal: AbortSignal, opts: SendOptions, options?: { skipUserMessage?: boolean }) => {
+    async (text: string, conversationId: string, abortSignal: AbortSignal, opts: StreamCallbacks, extras?: SendExtras) => {
       const store = useStore.getState();
       const { client, mode } = store;
       if (!client) return;
 
       // Add user message to conversation (skip when regenerating)
-      if (!options?.skipUserMessage) {
+      if (!extras?.skipUserMessage) {
         const userMsg: ChatMessage = {
           id: nanoid(),
           role: 'user',
           content: text,
+          attachments: extras?.attachments,
+          searchResults: extras?.searchResults,
           createdAt: Date.now(),
         };
         store.addMessage(conversationId, userMsg);
@@ -43,6 +55,30 @@ export function useChat() {
       const messages: Message[] = conversation
         ? conversation.messages.map((m) => ({ role: m.role, content: m.content }))
         : [{ role: 'user' as const, content: text }];
+
+      // Inject context into the last user message
+      if (messages.length > 0) {
+        const lastIdx = messages.length - 1;
+        const lastMsg = messages[lastIdx];
+        if (lastMsg.role === 'user') {
+          const contextParts: string[] = [];
+
+          if (extras?.searchResults?.length) {
+            contextParts.push(formatSearchContext(extras.searchResults, text));
+          }
+          if (extras?.attachments?.length) {
+            contextParts.push(formatAttachmentsContext(extras.attachments));
+          }
+
+          if (contextParts.length) {
+            const contextBlock = contextParts.join('\n\n');
+            messages[lastIdx] = {
+              ...lastMsg,
+              content: `${contextBlock}\n\n[User Message]\n${lastMsg.content}`,
+            };
+          }
+        }
+      }
 
       let rawContent = '';
       let reasoningFromAPI = '';
@@ -97,7 +133,7 @@ export function useChat() {
         if (lastChunk?.usage) {
           store.addTokenUsage(target, lastChunk.usage.prompt_tokens, lastChunk.usage.completion_tokens);
         } else {
-          const inputLen = messages.map((m) => m.content).join(' ').length;
+          const inputLen = messages.map((m) => typeof m.content === 'string' ? m.content : '').join(' ').length;
           store.addTokenUsage(
             target,
             Math.ceil(inputLen / 4),

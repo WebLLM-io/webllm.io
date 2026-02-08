@@ -31,19 +31,33 @@ export function MessageList({ messages, isStreaming, onRegenerate, onEditSubmit,
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6">
       <div className="max-w-3xl mx-auto space-y-4">
-        {messages.map((msg, i) => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            isLastAssistant={i === lastAssistantIndex}
-            isStreaming={isStreaming}
-            isEditing={editingIndex === i}
-            onEdit={() => setEditingIndex(i)}
-            onEditSubmit={(content) => onEditSubmit(i, content)}
-            onEditCancel={() => setEditingIndex(null)}
-            onRegenerate={onRegenerate}
-          />
-        ))}
+        {messages.map((msg, i) => {
+          // For assistant messages, find the preceding user message's searchResults
+          let searchResults = undefined;
+          if (msg.role === 'assistant') {
+            for (let j = i - 1; j >= 0; j--) {
+              if (messages[j].role === 'user') {
+                searchResults = messages[j].searchResults;
+                break;
+              }
+            }
+          }
+
+          return (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              isLastAssistant={i === lastAssistantIndex}
+              isStreaming={isStreaming}
+              isEditing={editingIndex === i}
+              searchResults={searchResults}
+              onEdit={() => setEditingIndex(i)}
+              onEditSubmit={(content) => onEditSubmit(i, content)}
+              onEditCancel={() => setEditingIndex(null)}
+              onRegenerate={onRegenerate}
+            />
+          );
+        })}
         {children}
         <div ref={bottomRef} />
       </div>

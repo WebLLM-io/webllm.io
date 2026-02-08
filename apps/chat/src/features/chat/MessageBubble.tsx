@@ -2,7 +2,10 @@ import { MarkdownContent } from './MarkdownContent';
 import { ThinkingSection } from './ThinkingSection';
 import { MessageActions } from './MessageActions';
 import { EditMessageForm } from './EditMessageForm';
+import { AttachmentBadge } from '../attachments/AttachmentBadge';
+import { SourcesCitation } from '../search/SourcesCitation';
 import type { ChatMessage } from '../conversations/types';
+import type { SearchResult } from '../search/types';
 import { cn } from '../../shared/cn';
 
 interface Props {
@@ -10,13 +13,14 @@ interface Props {
   isLastAssistant: boolean;
   isStreaming: boolean;
   isEditing: boolean;
+  searchResults?: SearchResult[];
   onEdit: () => void;
   onEditSubmit: (content: string) => void;
   onEditCancel: () => void;
   onRegenerate: () => void;
 }
 
-export function MessageBubble({ message, isLastAssistant, isStreaming, isEditing, onEdit, onEditSubmit, onEditCancel, onRegenerate }: Props) {
+export function MessageBubble({ message, isLastAssistant, isStreaming, isEditing, searchResults, onEdit, onEditSubmit, onEditCancel, onRegenerate }: Props) {
   const isUser = message.role === 'user';
 
   if (isEditing) {
@@ -41,6 +45,10 @@ export function MessageBubble({ message, isLastAssistant, isStreaming, isEditing
             : 'bg-bg-surface text-text',
         )}
       >
+        {isUser && message.attachments?.length ? (
+          <AttachmentBadge attachments={message.attachments} />
+        ) : null}
+
         {!isUser && message.thinking && (
           <ThinkingSection
             thinking={message.thinking}
@@ -52,6 +60,10 @@ export function MessageBubble({ message, isLastAssistant, isStreaming, isEditing
         <div className={isUser ? 'user-markdown' : ''}>
           <MarkdownContent content={message.content} />
         </div>
+
+        {!isUser && searchResults?.length ? (
+          <SourcesCitation results={searchResults} />
+        ) : null}
 
         {!isUser && (message.model || message.route) && (
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
